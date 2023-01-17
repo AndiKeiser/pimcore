@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.object.classes.data.reverseObjectRelation");
+/**
+ * @private
+ */
 pimcore.object.classes.data.reverseObjectRelation = Class.create(pimcore.object.classes.data.data, {
 
     type: "reverseObjectRelation",
@@ -56,6 +59,12 @@ pimcore.object.classes.data.reverseObjectRelation = Class.create(pimcore.object.
         this.specificPanel.removeAll();
         this.specificPanel.add([
             {
+                xtype: "checkbox",
+                boxLabel: t("allow_to_create_new_object"),
+                name: "allowToCreateNewObject",
+                value: this.datax.allowToCreateNewObject
+            },
+            {
                 xtype: "textfield",
                 fieldLabel: t("width"),
                 name: "width",
@@ -85,10 +94,6 @@ pimcore.object.classes.data.reverseObjectRelation = Class.create(pimcore.object.
                 value: this.datax.pathFormatterClass
             }
         ]);
-
-
-
-
 
         this.classCombo = new Ext.form.ComboBox({
             typeAhead: true,
@@ -151,8 +156,6 @@ pimcore.object.classes.data.reverseObjectRelation = Class.create(pimcore.object.
             }
         });
 
-
-
         this.specificPanel.add(this.classCombo);
         this.specificPanel.add(this.fieldCombo);
 
@@ -172,6 +175,7 @@ pimcore.object.classes.data.reverseObjectRelation = Class.create(pimcore.object.
             }
             Ext.apply(this.datax,
                 {
+                    allowToCreateNewObject: source.data.allowToCreateNewObject,
                     remoteOwner: source.datax.remoteOwner,
                     width: source.datax.width,
                     height: source.datax.height,

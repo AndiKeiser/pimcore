@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -72,6 +73,7 @@ class LinkController extends DocumentControllerBase
 
         $this->addTranslationsData($link, $data);
         $this->minimizeProperties($link, $data);
+        $this->populateUsersNames($link, $data);
 
         return $this->preSendDataActions($data, $link);
     }
@@ -109,9 +111,9 @@ class LinkController extends DocumentControllerBase
 
     /**
      * @param Request $request
-     * @param Document\Link $link
+     * @param Document\Link $document
      */
-    protected function setValuesToDocument(Request $request, Document $link)
+    protected function setValuesToDocument(Request $request, Document $document): void
     {
         // data
         if ($request->get('data')) {
@@ -161,10 +163,10 @@ class LinkController extends DocumentControllerBase
 
             unset($data['path']);
 
-            $link->setValues($data);
+            $document->setValues($data);
         }
 
-        $this->addPropertiesToDocument($request, $link);
-        $this->applySchedulerDataToElement($request, $link);
+        $this->addPropertiesToDocument($request, $document);
+        $this->applySchedulerDataToElement($request, $document);
     }
 }

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -32,19 +33,10 @@ class UsageStatisticsListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
-    /**
-     * @var TokenStorageUserResolver
-     */
-    protected $userResolver;
+    protected TokenStorageUserResolver $userResolver;
 
-    /**
-     * @var Config
-     */
-    protected $config;
+    protected Config $config;
 
-    /**
-     * @param TokenStorageUserResolver $userResolver
-     */
     public function __construct(TokenStorageUserResolver $userResolver, Config $config)
     {
         $this->userResolver = $userResolver;
@@ -61,7 +53,7 @@ class UsageStatisticsListener implements EventSubscriberInterface
         ];
     }
 
-    public function onKernelRequest(RequestEvent $event)
+    public function onKernelRequest(RequestEvent $event): void
     {
         $request = $event->getRequest();
 
@@ -76,10 +68,7 @@ class UsageStatisticsListener implements EventSubscriberInterface
         $this->logUsageStatistics($request);
     }
 
-    /**
-     * @param Request $request
-     */
-    protected function logUsageStatistics(Request $request)
+    protected function logUsageStatistics(Request $request): void
     {
         if (!empty($this->config['general']['disable_usage_statistics'])) {
             return;
@@ -99,12 +88,7 @@ class UsageStatisticsListener implements EventSubscriberInterface
         Simple::log('usagelog', implode('|', $parts));
     }
 
-    /**
-     * @param Request $request
-     *
-     * @return array
-     */
-    protected function getParams(Request $request)
+    protected function getParams(Request $request): array
     {
         $params = [];
         $disallowedKeys = ['_dc', 'module', 'controller', 'action', 'password'];
@@ -120,7 +104,7 @@ class UsageStatisticsListener implements EventSubscriberInterface
                 $value = json_decode($value);
                 if (is_array($value)) {
                     array_walk_recursive($value, function (&$item, $key) {
-                        if (strpos($key, 'pass') !== false) {
+                        if (strpos((string)$key, 'pass') !== false) {
                             $item = '*************';
                         }
                     });

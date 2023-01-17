@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -54,14 +55,7 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
  */
 class AssetHelperController extends AdminController
 {
-    /**
-     * @param int $userId
-     * @param string $classId
-     * @param string $searchType
-     *
-     * @return array
-     */
-    public function getMyOwnGridColumnConfigs($userId, $classId, $searchType)
+    public function getMyOwnGridColumnConfigs(int $userId, string $classId, string $searchType): array
     {
         $db = Db::get();
         $configListingConditionParts = [];
@@ -92,11 +86,11 @@ class AssetHelperController extends AdminController
     /**
      * @param User $user
      * @param string $classId
-     * @param string $searchType
+     * @param string|null $searchType
      *
      * @return array
      */
-    public function getSharedGridColumnConfigs($user, $classId, $searchType = null)
+    public function getSharedGridColumnConfigs(User $user, string $classId, string $searchType = null): array
     {
         $db = Db::get();
 
@@ -139,9 +133,9 @@ class AssetHelperController extends AdminController
      *
      * @return JsonResponse
      */
-    public function gridDeleteColumnConfigAction(Request $request)
+    public function gridDeleteColumnConfigAction(Request $request): JsonResponse
     {
-        $gridConfigId = $request->get('gridConfigId');
+        $gridConfigId = (int) $request->get('gridConfigId');
         $gridConfig = GridConfig::getById($gridConfigId);
         $success = false;
         if ($gridConfig) {
@@ -166,20 +160,14 @@ class AssetHelperController extends AdminController
      *
      * @return JsonResponse
      */
-    public function gridGetColumnConfigAction(Request $request)
+    public function gridGetColumnConfigAction(Request $request): JsonResponse
     {
         $result = $this->doGetGridColumnConfig($request);
 
         return $this->adminJson($result);
     }
 
-    /**
-     * @param Request $request
-     * @param bool $isDelete
-     *
-     * @return array
-     */
-    public function doGetGridColumnConfig(Request $request, $isDelete = false)
+    public function doGetGridColumnConfig(Request $request, bool $isDelete = false): array
     {
         $gridConfigId = null;
 
@@ -195,7 +183,7 @@ class AssetHelperController extends AdminController
 
         $userId = $this->getAdminUser()->getId();
 
-        $requestedGridConfigId = $isDelete ? null : $request->get('gridConfigId');
+        $requestedGridConfigId = $isDelete ? '' : $request->get('gridConfigId', '');
 
         // grid config
         $gridConfig = [];
@@ -219,9 +207,7 @@ class AssetHelperController extends AdminController
 
                 try {
                     $userIds = [$this->getAdminUser()->getId()];
-                    if ($this->getAdminUser()->getRoles()) {
-                        $userIds = array_merge($userIds, $this->getAdminUser()->getRoles());
-                    }
+                    $userIds = array_merge($userIds, $this->getAdminUser()->getRoles());
                     $userIds = implode(',', $userIds);
                     $shared = ($savedGridConfig->getOwnerId() != $userId && $savedGridConfig->isShareGlobally()) || $db->fetchOne('select * from gridconfig_shares where sharedWithUserId IN (' . $userIds . ') and gridConfigId = ' . $savedGridConfig->getId());
                 } catch (\Exception $e) {
@@ -245,10 +231,11 @@ class AssetHelperController extends AdminController
 
         if (empty($gridConfig)) {
             $availableFields = $this->getDefaultGridFields(
-                $request->get('no_system_columns'),
+                $request->query->getBoolean('no_system_columns'),
                 [], //maybe required for types other than metadata
                 $context,
-                $types);
+                $types
+            );
         } else {
             $savedColumns = $gridConfig['columns'];
 
@@ -304,7 +291,7 @@ class AssetHelperController extends AdminController
      *
      * @return array|null
      */
-    protected function getFieldGridConfig($field, $language = '', $keyPrefix = null)
+    protected function getFieldGridConfig(array $field, string $language = '', string $keyPrefix = null): ?array
     {
         $defaulMetadataFields = ['copyright', 'alt', 'title'];
         $predefined = null;
@@ -358,15 +345,7 @@ class AssetHelperController extends AdminController
         return $result;
     }
 
-    /**
-     * @param bool $noSystemColumns
-     * @param array $fields
-     * @param array $context
-     * @param array $types
-     *
-     * @return array
-     */
-    public function getDefaultGridFields($noSystemColumns, $fields, $context, $types = [])
+    public function getDefaultGridFields(bool $noSystemColumns, array $fields, array $context, array $types = []): array
     {
         $count = 0;
         $availableFields = [];
@@ -394,7 +373,7 @@ class AssetHelperController extends AdminController
      *
      * @return JsonResponse
      */
-    public function prepareHelperColumnConfigs(Request $request)
+    public function prepareHelperColumnConfigs(Request $request): JsonResponse
     {
         $helperColumns = [];
         $newData = [];
@@ -428,13 +407,13 @@ class AssetHelperController extends AdminController
      *
      * @return JsonResponse
      */
-    public function gridMarkFavouriteColumnConfigAction(Request $request)
+    public function gridMarkFavouriteColumnConfigAction(Request $request): JsonResponse
     {
         $classId = $request->get('classId');
         $asset = Asset::getById($classId);
 
         if ($asset->isAllowed('list')) {
-            $gridConfigId = $request->get('gridConfigId');
+            $gridConfigId = (int) $request->get('gridConfigId');
             $searchType = $request->get('searchType');
             $type = $request->get('type');
             $user = $this->getAdminUser();
@@ -464,12 +443,7 @@ class AssetHelperController extends AdminController
         throw $this->createAccessDeniedHttpException();
     }
 
-    /**
-     * @param int $gridConfigId
-     *
-     * @return array
-     */
-    protected function getShareSettings($gridConfigId)
+    protected function getShareSettings(int $gridConfigId): array
     {
         $result = [
             'sharedUserIds' => [],
@@ -503,7 +477,7 @@ class AssetHelperController extends AdminController
      *
      * @return JsonResponse
      */
-    public function gridSaveColumnConfigAction(Request $request)
+    public function gridSaveColumnConfigAction(Request $request): JsonResponse
     {
         $asset = Asset::getById((int) $request->get('id'));
 
@@ -530,7 +504,10 @@ class AssetHelperController extends AdminController
                 $metadata = json_decode($metadata, true);
 
                 $gridConfigId = $metadata['gridConfigId'];
-                $gridConfig = GridConfig::getById($gridConfigId);
+                $gridConfig = null;
+                if ($gridConfigId) {
+                    $gridConfig = GridConfig::getById($gridConfigId);
+                }
 
                 if ($gridConfig && $gridConfig->getOwnerId() != $this->getAdminUser()->getId()) {
                     throw new \Exception("don't mess around with somebody else's configuration");
@@ -596,7 +573,7 @@ class AssetHelperController extends AdminController
      *
      * @throws \Exception
      */
-    protected function updateGridConfigShares($gridConfig, $metadata)
+    protected function updateGridConfigShares(?GridConfig $gridConfig, array $metadata): void
     {
         $user = $this->getAdminUser();
         if (!$gridConfig || !$user->isAllowed('share_configurations')) {
@@ -637,7 +614,7 @@ class AssetHelperController extends AdminController
      *
      * @throws \Exception
      */
-    protected function updateGridConfigFavourites($gridConfig, $metadata)
+    protected function updateGridConfigFavourites(?GridConfig $gridConfig, array $metadata): void
     {
         $currentUser = $this->getAdminUser();
 
@@ -706,14 +683,14 @@ class AssetHelperController extends AdminController
     }
 
     /**
-     * @Route("/get-export-jobs", name="pimcore_admin_asset_assethelper_getexportjobs", methods={"GET"})
+     * @Route("/get-export-jobs", name="pimcore_admin_asset_assethelper_getexportjobs", methods={"POST"})
      *
      * @param Request $request
      * @param GridHelperService $gridHelperService
      *
      * @return JsonResponse
      */
-    public function getExportJobsAction(Request $request, GridHelperService $gridHelperService)
+    public function getExportJobsAction(Request $request, GridHelperService $gridHelperService): JsonResponse
     {
         $allParams = array_merge($request->request->all(), $request->query->all());
         $list = $gridHelperService->prepareAssetListingForGrid($allParams, $this->getAdminUser());
@@ -739,7 +716,7 @@ class AssetHelperController extends AdminController
      *
      * @return JsonResponse
      */
-    public function doExportAction(Request $request, LocaleServiceInterface $localeService)
+    public function doExportAction(Request $request, LocaleServiceInterface $localeService): JsonResponse
     {
         $fileHandle = \Pimcore\File::getValidFilename($request->get('fileHandle'));
         $ids = $request->get('ids');
@@ -760,7 +737,7 @@ class AssetHelperController extends AdminController
 
         $fields = $request->get('fields');
 
-        $addTitles = $request->get('initial');
+        $addTitles = (bool) $request->get('initial');
 
         $csv = $this->getCsvData($request, $language, $list, $fields, $addTitles);
 
@@ -788,23 +765,14 @@ class AssetHelperController extends AdminController
         return $this->adminJson(['success' => true]);
     }
 
-    public function encodeFunc($value)
+    public function encodeFunc(string $value): string
     {
         $value = str_replace('"', '""', $value);
         //force wrap value in quotes and return
         return '"' . $value . '"';
     }
 
-    /**
-     * @param Request $request
-     * @param string $language
-     * @param Asset\Listing $list
-     * @param array $fields
-     * @param bool $addTitles
-     *
-     * @return array
-     */
-    protected function getCsvData(Request $request, $language, $list, $fields, $addTitles = true)
+    protected function getCsvData(Request $request, string $language, Asset\Listing $list, array $fields, bool $addTitles = true): array
     {
         //create csv
         $csv = [];
@@ -851,12 +819,7 @@ class AssetHelperController extends AdminController
         return $csv;
     }
 
-    /**
-     * @param Request $request
-     *
-     * @return mixed|string
-     */
-    protected function extractLanguage(Request $request)
+    protected function extractLanguage(Request $request): string
     {
         $requestedLanguage = $request->get('language');
         if ($requestedLanguage) {
@@ -870,12 +833,7 @@ class AssetHelperController extends AdminController
         return $requestedLanguage;
     }
 
-    /**
-     * @param string $fileHandle
-     *
-     * @return string
-     */
-    protected function getCsvFile($fileHandle)
+    protected function getCsvFile(string $fileHandle): string
     {
         return $fileHandle . '.csv';
     }
@@ -887,7 +845,7 @@ class AssetHelperController extends AdminController
      *
      * @return Response
      */
-    public function downloadCsvFileAction(Request $request)
+    public function downloadCsvFileAction(Request $request): Response
     {
         $storage = Storage::get('temp');
         $fileHandle = \Pimcore\File::getValidFilename($request->get('fileHandle'));
@@ -919,7 +877,7 @@ class AssetHelperController extends AdminController
      *
      * @return BinaryFileResponse
      */
-    public function downloadXlsxFileAction(Request $request)
+    public function downloadXlsxFileAction(Request $request): BinaryFileResponse
     {
         $storage = Storage::get('temp');
         $fileHandle = \Pimcore\File::getValidFilename($request->get('fileHandle'));
@@ -956,7 +914,7 @@ class AssetHelperController extends AdminController
      *
      * @return JsonResponse
      */
-    public function getMetadataForColumnConfigAction(Request $request)
+    public function getMetadataForColumnConfigAction(Request $request): JsonResponse
     {
         $result = [];
 
@@ -1010,11 +968,9 @@ class AssetHelperController extends AdminController
     /**
      * @Route("/get-batch-jobs", name="pimcore_admin_asset_assethelper_getbatchjobs", methods={"GET"})
      *
-     * @param Request $request
      *
-     * @return JsonResponse
      */
-    public function getBatchJobsAction(Request $request, GridHelperService $gridHelperService)
+    public function getBatchJobsAction(Request $request, GridHelperService $gridHelperService): JsonResponse
     {
         if ($request->get('language')) {
             $request->setLocale($request->get('language'));
@@ -1036,7 +992,7 @@ class AssetHelperController extends AdminController
      *
      * @return JsonResponse
      */
-    public function batchAction(Request $request, EventDispatcherInterface $eventDispatcher)
+    public function batchAction(Request $request, EventDispatcherInterface $eventDispatcher): JsonResponse
     {
         try {
             if ($request->get('data')) {
@@ -1162,7 +1118,7 @@ class AssetHelperController extends AdminController
                 }
             }
         } catch (\Exception $e) {
-            Logger::err($e);
+            Logger::err((string)$e);
 
             return $this->adminJson(['success' => false, 'message' => $e->getMessage()]);
         }

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -42,10 +43,7 @@ class AdminSessionBagListener implements EventSubscriberInterface
         ];
     }
 
-    /**
-     * @param RequestEvent $event
-     */
-    public function onKernelRequest(RequestEvent $event)
+    public function onKernelRequest(RequestEvent $event): void
     {
         if (!$event->isMainRequest()) {
             return;
@@ -61,13 +59,9 @@ class AdminSessionBagListener implements EventSubscriberInterface
         $this->configure($session);
     }
 
-    /**
-     * @param SessionInterface $session
-     *
-     */
-    public function configure(SessionInterface $session)
+    public function configure(SessionInterface $session): void
     {
-        foreach ($this->config['admin']['session']['attribute_bags'] as $name => $config) {
+        foreach ($this->config['session']['attribute_bags'] as $name => $config) {
             $bag = new LockableAttributeBag($config['storage_key']);
             $bag->setName($name);
 

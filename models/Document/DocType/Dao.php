@@ -25,7 +25,7 @@ use Symfony\Component\Uid\Uuid as Uid;
  */
 class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
 {
-    public function configure()
+    public function configure(): void
     {
         $config = \Pimcore::getContainer()->getParameter('pimcore.config');
 
@@ -65,10 +65,10 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
     /**
      * @throws \Exception
      */
-    public function save()
+    public function save(): void
     {
         if (!$this->model->getId()) {
-            $this->model->setId(Uid::v4());
+            $this->model->setId((string)Uid::v4());
         }
         $ts = time();
         if (!$this->model->getCreationDate()) {
@@ -92,7 +92,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
     /**
      * Deletes object from database
      */
-    public function delete()
+    public function delete(): void
     {
         $this->deleteData($this->model->getId());
     }
@@ -100,7 +100,7 @@ class Dao extends Model\Dao\PimcoreLocationAwareConfigDao
     /**
      * {@inheritdoc}
      */
-    protected function prepareDataStructureForYaml(string $id, $data)
+    protected function prepareDataStructureForYaml(string $id, mixed $data): mixed
     {
         return [
             'pimcore' => [

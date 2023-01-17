@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -30,29 +31,19 @@ class CsrfProtectionHandler implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 
-    protected $excludedRoutes = [];
+    protected array $excludedRoutes = [];
 
-    protected $csrfToken = null;
+    protected ?string $csrfToken = null;
 
-    /**
-     * @var Environment
-     */
-    protected $twig;
+    protected Environment $twig;
 
-    /**
-     * @param array $excludedRoutes
-     * @param Environment $twig
-     */
-    public function __construct($excludedRoutes, Environment $twig)
+    public function __construct(array $excludedRoutes, Environment $twig)
     {
         $this->excludedRoutes = $excludedRoutes;
         $this->twig = $twig;
     }
 
-    /**
-     * @param Request $request
-     */
-    public function checkCsrfToken(Request $request)
+    public function checkCsrfToken(Request $request): void
     {
         $csrfToken = $this->getCsrfToken();
         $requestCsrfToken = $request->headers->get('x_pimcore_csrf_token');
@@ -69,10 +60,7 @@ class CsrfProtectionHandler implements LoggerAwareInterface
         }
     }
 
-    /**
-     * @return string
-     */
-    public function getCsrfToken()
+    public function getCsrfToken(): ?string
     {
         if (!$this->csrfToken) {
             $this->csrfToken = Session::getReadOnly()->get('csrfToken');
@@ -84,7 +72,7 @@ class CsrfProtectionHandler implements LoggerAwareInterface
         return $this->csrfToken;
     }
 
-    public function regenerateCsrfToken(bool $force = true)
+    public function regenerateCsrfToken(bool $force = true): void
     {
         $this->csrfToken = Session::useSession(function (AttributeBagInterface $adminSession) use ($force) {
             if ($force || !$adminSession->get('csrfToken')) {
@@ -97,14 +85,11 @@ class CsrfProtectionHandler implements LoggerAwareInterface
         $this->twig->addGlobal('csrfToken', $this->csrfToken);
     }
 
-    public function generateCsrfToken()
+    public function generateCsrfToken(): void
     {
         $this->twig->addGlobal('csrfToken', $this->getCsrfToken());
     }
 
-    /**
-     * @return array
-     */
     public function getExcludedRoutes(): array
     {
         return $this->excludedRoutes;

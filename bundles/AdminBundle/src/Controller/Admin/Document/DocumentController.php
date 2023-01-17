@@ -20,6 +20,7 @@ use Imagick;
 use Pimcore;
 use Pimcore\Bundle\AdminBundle\Controller\Admin\ElementControllerBase;
 use Pimcore\Bundle\AdminBundle\Controller\Traits\DocumentTreeConfigTrait;
+use Pimcore\Bundle\AdminBundle\Controller\Traits\UserNameTrait;
 use Pimcore\Cache\RuntimeCache;
 use Pimcore\Config;
 use Pimcore\Controller\KernelControllerEventInterface;
@@ -35,7 +36,6 @@ use Pimcore\Model\Exception\ConfigWriteException;
 use Pimcore\Model\Redirect;
 use Pimcore\Model\Site;
 use Pimcore\Model\Version;
-use Pimcore\Routing\Dynamic\DocumentRouteHandler;
 use Pimcore\Tool;
 use Pimcore\Tool\Frontend;
 use Pimcore\Tool\Session;
@@ -58,11 +58,9 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 class DocumentController extends ElementControllerBase implements KernelControllerEventInterface
 {
     use DocumentTreeConfigTrait;
+    use UserNameTrait;
 
-    /**
-     * @var Document\Service
-     */
-    protected $_documentService;
+    protected Document\Service $_documentService;
 
     /**
      * @Route("/tree-get-root", name="pimcore_admin_document_document_treegetroot", methods={"GET"})
@@ -71,7 +69,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function treeGetRootAction(Request $request)
+    public function treeGetRootAction(Request $request): JsonResponse
     {
         return parent::treeGetRootAction($request);
     }
@@ -84,7 +82,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function deleteInfoAction(Request $request, EventDispatcherInterface $eventDispatcher)
+    public function deleteInfoAction(Request $request, EventDispatcherInterface $eventDispatcher): JsonResponse
     {
         return parent::deleteInfoAction($request, $eventDispatcher);
     }
@@ -92,11 +90,9 @@ class DocumentController extends ElementControllerBase implements KernelControll
     /**
      * @Route("/get-data-by-id", name="pimcore_admin_document_document_getdatabyid", methods={"GET"})
      *
-     * @param Request $request
      *
-     * @return JsonResponse
      */
-    public function getDataByIdAction(Request $request, EventDispatcherInterface $eventDispatcher)
+    public function getDataByIdAction(Request $request, EventDispatcherInterface $eventDispatcher): JsonResponse
     {
         $document = Document::getById((int) $request->get('id'));
 
@@ -107,6 +103,13 @@ class DocumentController extends ElementControllerBase implements KernelControll
         $document = clone $document;
         $data = $document->getObjectVars();
         $data['versionDate'] = $document->getModificationDate();
+
+        $userOwnerName = $this->getUserName($document->getUserOwner());
+        $userModificationName = ($document->getUserOwner() == $document->getUserModification()) ? $userOwnerName : $this->getUserName($document->getUserModification());
+        $data['userOwnerUsername'] = $userOwnerName['userName'];
+        $data['userOwnerFullname'] = $userOwnerName['fullName'];
+        $data['userModificationUsername'] = $userModificationName['userName'];
+        $data['userModificationFullname'] = $userModificationName['fullName'];
 
         $data['php'] = [
             'classes' => array_merge([get_class($document)], array_values(class_parents($document))),
@@ -130,13 +133,11 @@ class DocumentController extends ElementControllerBase implements KernelControll
     }
 
     /**
-     * @Route("/tree-get-childs-by-id", name="pimcore_admin_document_document_treegetchildsbyid", methods={"GET"})
+     * @Route("/tree-get-children-by-id", name="pimcore_admin_document_document_treegetchildrenbyid", methods={"GET"})
      *
-     * @param Request $request
      *
-     * @return JsonResponse
      */
-    public function treeGetChildsByIdAction(Request $request, EventDispatcherInterface $eventDispatcher)
+    public function treeGetChildrenByIdAction(Request $request, EventDispatcherInterface $eventDispatcher): JsonResponse
     {
         $allParams = array_merge($request->request->all(), $request->query->all());
 
@@ -159,7 +160,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
         }
 
         $documents = [];
-        $cv = false;
+        $cv = [];
         if ($document->hasChildren()) {
             if ($allParams['view']) {
                 $cv = Service::getCustomViewById($allParams['view']);
@@ -178,7 +179,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
 
                 $inheritedPermission = $document->getDao()->isInheritingPermission('list', $userIds);
 
-                $anyAllowedRowOrChildren = 'EXISTS(SELECT list FROM users_workspaces_document uwd WHERE userId IN (' . implode(',', $userIds) . ') AND list=1 AND LOCATE(CONCAT(path,`key`),cpath)=1 AND
+                $anyAllowedRowOrChildren = 'EXISTS(SELECT list FROM users_workspaces_document uwd WHERE userId IN (' . implode(',', $userIds) . ') AND list=1 AND LOCATE(CONCAT(`path`,`key`),cpath)=1 AND
                 NOT EXISTS(SELECT list FROM users_workspaces_document WHERE userId =' . $currentUserId . '  AND list=0 AND cpath = uwd.cpath))';
                 $isDisallowedCurrentRow = 'EXISTS(SELECT list FROM users_workspaces_document WHERE userId IN (' . implode(',', $userIds) . ')  AND cid = id AND list=0)';
 
@@ -247,7 +248,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function addAction(Request $request)
+    public function addAction(Request $request): JsonResponse
     {
         $success = false;
         $errorMessage = '';
@@ -268,7 +269,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
                 $createValues['key'] = Service::getValidKey($request->get('key'), 'document');
 
                 // check for a docType
-                $docType = Document\DocType::getById($request->get('docTypeId'));
+                $docType = Document\DocType::getById($request->get('docTypeId', ''));
                 if ($docType) {
                     $createValues['template'] = $docType->getTemplate();
                     $createValues['controller'] = $docType->getController();
@@ -293,7 +294,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
 
                 switch ($request->get('type')) {
                     case 'page':
-                        $document = Document\Page::create($request->get('parentId'), $createValues, false);
+                        $document = Document\Page::create($parentDocument->getId(), $createValues, false);
                         $document->setTitle($request->get('title', null));
                         $document->setProperty('navigation_name', 'text', $request->get('name', null), false, false);
                         $document->save();
@@ -301,27 +302,27 @@ class DocumentController extends ElementControllerBase implements KernelControll
 
                         break;
                     case 'snippet':
-                        $document = Document\Snippet::create($request->get('parentId'), $createValues);
+                        $document = Document\Snippet::create($parentDocument->getId(), $createValues);
                         $success = true;
 
                         break;
                     case 'email': //ckogler
-                        $document = Document\Email::create($request->get('parentId'), $createValues);
+                        $document = Document\Email::create($parentDocument->getId(), $createValues);
                         $success = true;
 
                         break;
                     case 'link':
-                        $document = Document\Link::create($request->get('parentId'), $createValues);
+                        $document = Document\Link::create($parentDocument->getId(), $createValues);
                         $success = true;
 
                         break;
                     case 'hardlink':
-                        $document = Document\Hardlink::create($request->get('parentId'), $createValues);
+                        $document = Document\Hardlink::create($parentDocument->getId(), $createValues);
                         $success = true;
 
                         break;
                     case 'folder':
-                        $document = Document\Folder::create($request->get('parentId'), $createValues);
+                        $document = Document\Folder::create($parentDocument->getId(), $createValues);
                         $document->setPublished(true);
 
                         try {
@@ -345,7 +346,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
                         }
 
                         if (Tool::classExists($classname)) {
-                            $document = $classname::create($request->get('parentId'), $createValues);
+                            $document = $classname::create($parentDocument->getId(), $createValues);
 
                             try {
                                 $document->save();
@@ -404,25 +405,17 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function deleteAction(Request $request)
+    public function deleteAction(Request $request): JsonResponse
     {
         $type = $request->get('type');
 
-        if ($type === 'childs') {
-            trigger_deprecation(
-                'pimcore/pimcore',
-                '10.4',
-                'Type childs is deprecated. Use children instead'
-            );
-            $type = 'children';
-        }
         if ($type === 'children') {
             $parentDocument = Document::getById((int) $request->get('id'));
 
             $list = new Document\Listing();
-            $list->setCondition('path LIKE ?', [$list->escapeLike($parentDocument->getRealFullPath()) . '/%']);
+            $list->setCondition('`path` LIKE ?', [$list->escapeLike($parentDocument->getRealFullPath()) . '/%']);
             $list->setLimit((int)$request->get('amount'));
-            $list->setOrderKey('LENGTH(path)', false);
+            $list->setOrderKey('LENGTH(`path`)', false);
             $list->setOrder('DESC');
 
             $documents = $list->load();
@@ -467,7 +460,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @throws Exception
      */
-    public function updateAction(Request $request)
+    public function updateAction(Request $request): JsonResponse
     {
         $success = false;
         $allowUpdate = true;
@@ -571,7 +564,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
         return $this->adminJson(['success' => $success]);
     }
 
-    private function createRedirectForFormerPath(Request $request, Document $document, string $oldPath, Document $oldDocument)
+    private function createRedirectForFormerPath(Request $request, Document $document, string $oldPath, Document $oldDocument): void
     {
         if ($document instanceof Document\Page || $document instanceof Document\Hardlink) {
             if ($request->get('create_redirects') === 'true' && $this->getAdminUser()->isAllowed('redirects')) {
@@ -587,7 +580,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
 
                     if ($document->hasChildren()) {
                         $list = new Document\Listing();
-                        $list->setCondition('path LIKE :path', [
+                        $list->setCondition('`path` LIKE :path', [
                             'path' => $list->escapeLike($document->getRealFullPath()) . '/%',
                         ]);
 
@@ -596,7 +589,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
                         $count = 0;
 
                         foreach ($childrenList as $child) {
-                            $source = preg_replace('@^' . preg_quote($document->getRealFullPath(), '@') . '@', $oldDocument, $child['path']);
+                            $source = preg_replace('@^' . preg_quote($document->getRealFullPath(), '@') . '@', $oldDocument->getRealFullPath(), $child['path']);
                             if ($sourceSite) {
                                 $source = preg_replace('@^' . preg_quote($sourceSite->getRootPath(), '@') . '@', '', $source);
                             }
@@ -616,7 +609,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
         }
     }
 
-    private function doCreateRedirectForFormerPath(string $source, int $targetId, ?Site $sourceSite, ?Site $targetSite)
+    private function doCreateRedirectForFormerPath(string $source, int $targetId, ?Site $sourceSite, ?Site $targetSite): void
     {
         $redirect = new Redirect();
         $redirect->setType(Redirect::TYPE_AUTO_CREATE);
@@ -637,11 +630,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
         $redirect->save();
     }
 
-    /**
-     * @param Document $document
-     * @param int $newIndex
-     */
-    protected function updateIndexesOfDocumentSiblings(Document $document, $newIndex)
+    protected function updateIndexesOfDocumentSiblings(Document $document, int $newIndex): void
     {
         $updateLatestVersionIndex = function ($document, $newIndex) {
             if ($document instanceof Document\PageSnippet && $latestVersion = $document->getLatestVersion()) {
@@ -659,10 +648,10 @@ class DocumentController extends ElementControllerBase implements KernelControll
         $list->setCondition('parentId = ? AND id != ?', [$document->getParentId(), $document->getId()]);
         $list->setOrderKey('index');
         $list->setOrder('asc');
-        $childsList = $list->load();
+        $childrenList = $list->load();
 
         $count = 0;
-        foreach ($childsList as $child) {
+        foreach ($childrenList as $child) {
             if ($count == $newIndex) {
                 $count++;
             }
@@ -679,11 +668,10 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function docTypesGetAction(Request $request)
+    public function docTypesGetAction(Request $request): JsonResponse
     {
         // get list of types
-        $list = new Document\DocType\Listing();
-        $list->load();
+        $list = new DocType\Listing();
 
         $docTypes = [];
         foreach ($list->getDocTypes() as $type) {
@@ -698,30 +686,28 @@ class DocumentController extends ElementControllerBase implements KernelControll
     }
 
     /**
-     * @Route("/doc-types", name="pimcore_admin_document_document_doctypes", methods={"PUT", "POST","DELETE"})
+     * @Route("/doc-types", name="pimcore_admin_document_document_doctypes", methods={"PUT", "POST", "DELETE"})
      *
      * @param Request $request
      *
      * @return JsonResponse
      */
-    public function docTypesAction(Request $request)
+    public function docTypesAction(Request $request): JsonResponse
     {
         if ($request->get('data')) {
             $this->checkPermission('document_types');
 
-            if ($request->get('xaction') == 'destroy') {
-                $data = $this->decodeJson($request->get('data'));
-                $id = $data['id'];
-                $type = Document\DocType::getById($id);
+            $data = $this->decodeJson($request->get('data'));
+
+            if ($request->get('xaction') === 'destroy') {
+                $type = Document\DocType::getById($data['id']);
                 if (!$type->isWriteable()) {
                     throw new ConfigWriteException();
                 }
                 $type->delete();
 
                 return $this->adminJson(['success' => true, 'data' => []]);
-            } elseif ($request->get('xaction') == 'update') {
-                $data = $this->decodeJson($request->get('data'));
-
+            } elseif ($request->get('xaction') === 'update') {
                 // save type
                 $type = Document\DocType::getById($data['id']);
 
@@ -736,12 +722,11 @@ class DocumentController extends ElementControllerBase implements KernelControll
                 $responseData['writeable'] = $type->isWriteable();
 
                 return $this->adminJson(['data' => $responseData, 'success' => true]);
-            } elseif ($request->get('xaction') == 'create') {
+            } elseif ($request->get('xaction') === 'create') {
                 if (!(new DocType())->isWriteable()) {
                     throw new ConfigWriteException();
                 }
 
-                $data = $this->decodeJson($request->get('data'));
                 unset($data['id']);
 
                 // save type
@@ -769,14 +754,15 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function getDocTypesAction(Request $request)
+    public function getDocTypesAction(Request $request): JsonResponse
     {
-        $list = new Document\DocType\Listing();
+        $list = new DocType\Listing();
+
         if ($type = $request->get('type')) {
             if (!Document\Service::isValidType($type)) {
                 throw new BadRequestHttpException('Invalid type: ' . $type);
             }
-            $list->setFilter(function (Document\DocType $docType) use ($type) {
+            $list->setFilter(static function (DocType $docType) use ($type) {
                 return $docType->getType() === $type;
             });
         }
@@ -796,7 +782,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return Response
      */
-    public function versionToSessionAction(Request $request)
+    public function versionToSessionAction(Request $request): Response
     {
         $version = Version::getById((int) $request->get('id'));
         if (!$version) {
@@ -815,7 +801,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function publishVersionAction(Request $request)
+    public function publishVersionAction(Request $request): JsonResponse
     {
         $this->versionToSessionAction($request);
 
@@ -840,6 +826,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
             }
         }
 
+        $treeData = [];
         $this->addAdminStyle($document, ElementAdminStyleEvent::CONTEXT_EDITOR, $treeData);
 
         return $this->adminJson(['success' => true, 'treeData' => $treeData]);
@@ -852,7 +839,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function updateSiteAction(Request $request)
+    public function updateSiteAction(Request $request): JsonResponse
     {
         $domains = $request->get('domains');
         $domains = str_replace(' ', '', $domains);
@@ -895,7 +882,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function removeSiteAction(Request $request)
+    public function removeSiteAction(Request $request): JsonResponse
     {
         $site = Site::getByRootId((int)$request->get('id'));
         $site->delete();
@@ -910,7 +897,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function copyInfoAction(Request $request)
+    public function copyInfoAction(Request $request): JsonResponse
     {
         $transactionId = time();
         $pasteJobs = [];
@@ -942,8 +929,8 @@ class DocumentController extends ElementControllerBase implements KernelControll
             if ($document->hasChildren()) {
                 // get amount of children
                 $list = new Document\Listing();
-                $list->setCondition('path LIKE ?', [$list->escapeLike($document->getRealFullPath()) . '/%']);
-                $list->setOrderKey('LENGTH(path)', false);
+                $list->setCondition('`path` LIKE ?', [$list->escapeLike($document->getRealFullPath()) . '/%']);
+                $list->setOrderKey('LENGTH(`path`)', false);
                 $list->setOrder('ASC');
                 $childIds = $list->loadIdList();
 
@@ -1009,7 +996,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function copyRewriteIdsAction(Request $request)
+    public function copyRewriteIdsAction(Request $request): JsonResponse
     {
         $transactionId = $request->get('transactionId');
 
@@ -1054,7 +1041,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function copyAction(Request $request)
+    public function copyAction(Request $request): JsonResponse
     {
         $success = false;
         $sourceId = (int)$request->get('sourceId');
@@ -1136,7 +1123,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return Response
      */
-    public function diffVersionsAction(Request $request, $from, $to)
+    public function diffVersionsAction(Request $request, int $from, int $to): Response
     {
         // return with error if prerequisites do not match
         if (!Chromium::isSupported() || !class_exists('Imagick')) {
@@ -1201,7 +1188,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return BinaryFileResponse
      */
-    public function diffVersionsImageAction(Request $request)
+    public function diffVersionsImageAction(Request $request): BinaryFileResponse
     {
         $file = PIMCORE_SYSTEM_TEMP_DIRECTORY . '/version-diff-tmp-' . $request->get('id') . '.png';
         if (file_exists($file)) {
@@ -1221,7 +1208,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function getIdForPathAction(Request $request)
+    public function getIdForPathAction(Request $request): JsonResponse
     {
         if ($doc = Document::getByPath($request->get('path'))) {
             return $this->adminJson([
@@ -1234,114 +1221,13 @@ class DocumentController extends ElementControllerBase implements KernelControll
     }
 
     /**
-     * SEO PANEL
-     */
-
-    /**
-     * @Route("/seopanel-tree-root", name="pimcore_admin_document_document_seopaneltreeroot", methods={"GET"})
-     *
-     * @param DocumentRouteHandler $documentRouteHandler
-     *
-     * @return JsonResponse
-     */
-    public function seopanelTreeRootAction(DocumentRouteHandler $documentRouteHandler)
-    {
-        $this->checkPermission('seo_document_editor');
-
-        /** @var Document\Page $root */
-        $root = Document\Page::getById(1);
-        if ($root->isAllowed('list')) {
-            // make sure document routes are also built for unpublished documents
-            $documentRouteHandler->setForceHandleUnpublishedDocuments(true);
-
-            $nodeConfig = $this->getSeoNodeConfig($root);
-
-            return $this->adminJson($nodeConfig);
-        }
-
-        throw $this->createAccessDeniedHttpException();
-    }
-
-    /**
-     * @Route("/seopanel-tree", name="pimcore_admin_document_document_seopaneltree", methods={"GET"})
-     *
-     * @param Request $request
-     * @param EventDispatcherInterface $eventDispatcher
-     * @param DocumentRouteHandler $documentRouteHandler
-     *
-     * @return JsonResponse
-     */
-    public function seopanelTreeAction(
-        Request $request,
-        EventDispatcherInterface $eventDispatcher,
-        DocumentRouteHandler $documentRouteHandler
-    ) {
-        $allParams = array_merge($request->request->all(), $request->query->all());
-
-        $filterPrepareEvent = new GenericEvent($this, [
-            'requestParams' => $allParams,
-        ]);
-        $eventDispatcher->dispatch($filterPrepareEvent, AdminEvents::DOCUMENT_LIST_BEFORE_FILTER_PREPARE);
-
-        $allParams = $filterPrepareEvent->getArgument('requestParams');
-
-        $this->checkPermission('seo_document_editor');
-
-        // make sure document routes are also built for unpublished documents
-        $documentRouteHandler->setForceHandleUnpublishedDocuments(true);
-
-        $document = Document::getById($allParams['node']);
-
-        $documents = [];
-        if ($document->hasChildren()) {
-            $list = new Document\Listing();
-            $list->setCondition('parentId = ?', $document->getId());
-            $list->setOrderKey('index');
-            $list->setOrder('asc');
-
-            $beforeListLoadEvent = new GenericEvent($this, [
-                'list' => $list,
-                'context' => $allParams,
-            ]);
-            $eventDispatcher->dispatch($beforeListLoadEvent, AdminEvents::DOCUMENT_LIST_BEFORE_LIST_LOAD);
-            /** @var Document\Listing $list */
-            $list = $beforeListLoadEvent->getArgument('list');
-
-            $childsList = $list->load();
-
-            foreach ($childsList as $childDocument) {
-                // only display document if listing is allowed for the current user
-                if ($childDocument->isAllowed('list')) {
-                    $list = new Document\Listing();
-                    $list->setCondition('path LIKE ? and type = ?', [$list->escapeLike($childDocument->getRealFullPath()). '/%', 'page']);
-
-                    if ($childDocument instanceof Document\Page || $list->getTotalCount() > 0) {
-                        $documents[] = $this->getSeoNodeConfig($childDocument);
-                    }
-                }
-            }
-        }
-
-        $result = ['data' => $documents, 'success' => true, 'total' => count($documents)];
-
-        $afterListLoadEvent = new GenericEvent($this, [
-            'list' => $result,
-            'context' => $allParams,
-        ]);
-        $eventDispatcher->dispatch($afterListLoadEvent, AdminEvents::DOCUMENT_LIST_AFTER_LIST_LOAD);
-        $result = $afterListLoadEvent->getArgument('list');
-
-        return $this->adminJson($result['data']);
-    }
-
-    /**
      * @Route("/language-tree", name="pimcore_admin_document_document_languagetree", methods={"GET"})
      *
      * @param Request $request
      *
      * @return JsonResponse
      */
-    public function languageTreeAction(Request $request)
+    public function languageTreeAction(Request $request): JsonResponse
     {
         $document = Document::getById((int) $request->query->get('node'));
 
@@ -1364,7 +1250,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @throws Exception
      */
-    public function languageTreeRootAction(Request $request)
+    public function languageTreeRootAction(Request $request): JsonResponse
     {
         $document = Document::getById((int) $request->query->get('id'));
 
@@ -1422,7 +1308,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
         ]);
     }
 
-    private function getTranslationTreeNodeConfig($document, array $languages, array $translations = null)
+    private function getTranslationTreeNodeConfig(Document $document, array $languages, array $translations = null): array
     {
         $service = new Document\Service();
 
@@ -1460,7 +1346,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function convertAction(Request $request)
+    public function convertAction(Request $request): JsonResponse
     {
         $document = Document::getById((int) $request->get('id'));
         if (!$document) {
@@ -1501,7 +1387,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function translationDetermineParentAction(Request $request)
+    public function translationDetermineParentAction(Request $request): JsonResponse
     {
         $success = false;
         $targetDocument = null;
@@ -1532,7 +1418,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function translationAddAction(Request $request)
+    public function translationAddAction(Request $request): JsonResponse
     {
         $sourceDocument = Document::getById((int) $request->get('sourceId'));
         $targetDocument = Document::getByPath($request->get('targetPath'));
@@ -1565,7 +1451,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function translationRemoveAction(Request $request)
+    public function translationRemoveAction(Request $request): JsonResponse
     {
         $sourceDocument = Document::getById((int) $request->get('sourceId'));
         $targetDocument = Document::getById((int) $request->get('targetId'));
@@ -1586,7 +1472,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
      *
      * @return JsonResponse
      */
-    public function translationCheckLanguageAction(Request $request)
+    public function translationCheckLanguageAction(Request $request): JsonResponse
     {
         $success = false;
         $language = null;
@@ -1610,12 +1496,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
         ]);
     }
 
-    /**
-     * @param Document $document
-     *
-     * @return array
-     */
-    private function getSeoNodeConfig($document)
+    private function getSeoNodeConfig(Document $document): array
     {
         $nodeConfig = $this->getTreeNodeConfig($document);
 
@@ -1636,10 +1517,7 @@ class DocumentController extends ElementControllerBase implements KernelControll
         return $nodeConfig;
     }
 
-    /**
-     * @param ControllerEvent $event
-     */
-    public function onKernelControllerEvent(ControllerEvent $event)
+    public function onKernelControllerEvent(ControllerEvent $event): void
     {
         if (!$event->isMainRequest()) {
             return;

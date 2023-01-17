@@ -1,7 +1,7 @@
 # Bundle Collection
 
 The `BundleCollection` is a container which is used to register every used bundle. As Pimcore gathers bundles from multiple 
-sources - registered via code in `App\Kernel` and registered through the extension manager config, it makes sense to have 
+sources - registered via code in `App\Kernel` and registered through `config/bundles.php` config, it makes sense to have 
 a unified API how bundles can be registered. 
 
 While Symfony's standard edition uses a `registerBundles` method building an array of bundles to load, Pimcore expects you
@@ -71,7 +71,7 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
 
 class CustomBundle extends Bundle implements DependentBundleInterface
 {
-    public static function registerDependentBundles(BundleCollection $collection)
+    public static function registerDependentBundles(BundleCollection $collection): void
     {
         // register any bundles your bundle depends on here
         $collection->addBundle(new FooBundle);
@@ -96,7 +96,7 @@ use Pimcore\HttpKernel\BundleCollection\LazyLoadedItem;
 
 class CustomBundle extends Bundle implements DependentBundleInterface
 {
-    public static function registerDependentBundles(BundleCollection $collection)
+    public static function registerDependentBundles(BundleCollection $collection): void
     {
         // call addBundle with a class name as string and restrict it to the dev environment
         $collection->addBundle(FooBundle::class, 0, ['dev']);
@@ -121,7 +121,7 @@ with a priority of 10, but we need to set the priority to 25:
 
 class CustomBundle extends Bundle implements DependentBundleInterface
 {
-    public static function registerDependentBundles(BundleCollection $collection)
+    public static function registerDependentBundles(BundleCollection $collection): void
     {
         $collection->addBundle(FooBundle::class, 10);
     }

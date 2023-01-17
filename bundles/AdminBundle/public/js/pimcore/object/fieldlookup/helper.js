@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.object.fieldlookup.helper");
+/**
+ * @private
+ */
 pimcore.object.fieldlookup.helper = Class.create(pimcore.object.helpers.classTree, {
 
     showFieldName: false,
@@ -24,7 +27,7 @@ pimcore.object.fieldlookup.helper = Class.create(pimcore.object.helpers.classTre
         for(let i = 0; i < keys.length; i++) {
             if (data[keys[i]]) {
                 let dataEntry = data[keys[i]];
-                if (dataEntry.childs) {
+                if (dataEntry.children) {
                     var attributePrefix = "";
                     var text = t(dataEntry.nodeLabel);
                     var nodeType = dataEntry.nodeType;
@@ -50,8 +53,8 @@ pimcore.object.fieldlookup.helper = Class.create(pimcore.object.helpers.classTre
                     };
 
                     baseNode = tree.getRootNode().appendChild(baseNode);
-                    for (let j = 0; j < dataEntry.childs.length; j++) {
-                        let childData = this.recursiveAddNode(dataEntry.childs[j], baseNode, attributePrefix, this, dataContext);
+                    for (let j = 0; j < dataEntry.children.length; j++) {
+                        let childData = this.recursiveAddNode(dataEntry.children[j], baseNode, attributePrefix, this, dataContext);
                         if (childData) {
                             baseNode.appendChild(childData);
                         }
@@ -226,9 +229,9 @@ pimcore.object.fieldlookup.helper = Class.create(pimcore.object.helpers.classTre
 
             newNode = fn();
 
-            if (con.childs) {
-                for (var i = 0; i < con.childs.length; i++) {
-                    this.recursiveAddNode(con.childs[i], newNode, attributePrefix, ctx, dataContext);
+            if (con.children) {
+                for (var i = 0; i < con.children.length; i++) {
+                    this.recursiveAddNode(con.children[i], newNode, attributePrefix, ctx, dataContext);
                 }
             }
 

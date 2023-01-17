@@ -11,8 +11,10 @@
  * @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
-/*global google */
 pimcore.registerNS('pimcore.object.tags.geopoint');
+/**
+ * @private
+ */
 pimcore.object.tags.geopoint = Class.create(pimcore.object.tags.geo.abstract, {
 
     type: 'geopoint',
@@ -201,7 +203,14 @@ pimcore.object.tags.geopoint = Class.create(pimcore.object.tags.geo.abstract, {
             url: this.getSearchUrl(address),
             method: "GET",
             success: function (response, opts) {
-                var data = Ext.decode(response.responseText);
+                const data = Ext.decode(response.responseText);
+                if(!Array.isArray(data) || data.length === 0) {
+                    Ext.MessageBox.alert(t('error'), t('address_not_found') + '. <br /> <br /> ' +
+                        t('possible_causes') + ':' +
+                        `<p>${t('postal_code_format_error')}</p>` );
+
+                    return;
+                }
                 this.latitude.setValue(data[0].lat);
                 this.longitude.setValue(data[0].lon);
                 this.updateMap();

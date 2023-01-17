@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.settings.metadata.predefined");
+/**
+ * @private
+ */
 pimcore.settings.metadata.predefined = Class.create({
 
     initialize: function () {
@@ -80,6 +83,12 @@ pimcore.settings.metadata.predefined = Class.create({
                 remoteFilter: false
             }
         );
+
+        this.store.getProxy().getReader().setMessageProperty('message');
+        this.store.getProxy().on('exception', function (proxy, response, operation) {
+            pimcore.helpers.showNotification(t("error"), t(operation.getError()), "error");
+            this.store.load();
+        }.bind(this));
 
         this.store.addListener('exception', function(proxy, mode, action, options, response) {
             Ext.Msg.show({

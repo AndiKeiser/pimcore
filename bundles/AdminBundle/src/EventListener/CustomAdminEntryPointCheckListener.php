@@ -31,7 +31,7 @@ class CustomAdminEntryPointCheckListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
-    protected $customAdminPathIdentifier;
+    protected ?string $customAdminPathIdentifier = null;
 
     public function __construct(?string $customAdminPathIdentifier)
     {
@@ -48,10 +48,7 @@ class CustomAdminEntryPointCheckListener implements EventSubscriberInterface
         ];
     }
 
-    /**
-     * @param RequestEvent $event
-     */
-    public function onKernelRequest(RequestEvent $event)
+    public function onKernelRequest(RequestEvent $event): void
     {
         $request = $event->getRequest();
         if ($event->isMainRequest() && $this->customAdminPathIdentifier && $this->matchesPimcoreContext($request, PimcoreContextResolver::CONTEXT_ADMIN)) {

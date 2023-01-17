@@ -18,6 +18,9 @@
  */
 
 pimcore.registerNS("pimcore.object.helpers.grid");
+/**
+ * @private
+ */
 pimcore.object.helpers.grid = Class.create({
 
     baseParams: {},
@@ -380,9 +383,9 @@ pimcore.object.helpers.grid = Class.create({
 
                 } else {
                     var fieldType = fields[i].type;
-                    var tag = pimcore.object.tags[fieldType];
+                    var tag = new pimcore.object.tags[fieldType](null, fields[i].layout);
                     if (tag) {
-                        var fc = tag.prototype.getGridColumnConfig(field);
+                        var fc = tag.getGridColumnConfig(field);
 
                         if(width === null) {
                             fc.autoSizeColumn = true;

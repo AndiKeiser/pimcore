@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.object.tags.country");
+/**
+ * @private
+ */
 pimcore.object.tags.country = Class.create(pimcore.object.tags.select, {
 
     type: "country",
@@ -24,7 +27,7 @@ pimcore.object.tags.country = Class.create(pimcore.object.tags.select, {
 
     getGridColumnConfig:function (field) {
         var renderer = function (key, value, metaData, record) {
-            if (value) {
+            if (value && Ext.isObject(value)) {
                 value = value.value;
             }
             this.applyPermissionStyle(key, value, metaData, record);

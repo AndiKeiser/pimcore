@@ -13,6 +13,9 @@
 
 pimcore.registerNS("pimcore.elementservice.x");
 
+/**
+ * @private
+ */
 pimcore.elementservice.deleteElement = function (options) {
     var elementType = options.elementType;
     var url = Routing.getBaseUrl() + "/admin/"  + elementType + "/delete-info?";
@@ -24,6 +27,9 @@ pimcore.elementservice.deleteElement = function (options) {
     });
 };
 
+/**
+ * @private
+ */
 pimcore.elementservice.deleteElementsComplete = function(options, response) {
     try {
         var res = Ext.decode(response.responseText);
@@ -71,10 +77,13 @@ pimcore.elementservice.deleteElementsComplete = function(options, response) {
     }
 }
 
+/**
+ * @private
+ */
 pimcore.elementservice.deleteElementCheckDependencyComplete = function (window, res, options) {
 
     try {
-        var message = res.batchDelete ? t('delete_message_batch') : t('delete_message');
+        let message = res.batchDelete ? t('delete_message_batch') : t('delete_message');
         if (res.elementKey) {
             message += "<br /><b style='display: block; text-align: center; padding: 10px 0;'>\"" + htmlspecialchars(res.elementKey) + "\"</b>";
         }
@@ -84,6 +93,10 @@ pimcore.elementservice.deleteElementCheckDependencyComplete = function (window, 
 
         if (res['children'] > 100) {
             message += "<br /><br /><b>" + t("too_many_children_for_recyclebin") + "</b>";
+        }
+
+        if(res.itemResults[0].type === "folder") {
+            message += `<br /><br /><b> ${t('delete_entire_folder_question')} </b>`;
         }
 
         Ext.MessageBox.show({
@@ -99,7 +112,9 @@ pimcore.elementservice.deleteElementCheckDependencyComplete = function (window, 
     }
 };
 
-
+/**
+ * @private
+ */
 pimcore.elementservice.getElementTreeNames = function(elementType) {
     var treeNames = ["layout_" + elementType + "_tree"]
     if (pimcore.settings.customviews.length > 0) {
@@ -113,6 +128,9 @@ pimcore.elementservice.getElementTreeNames = function(elementType) {
     return treeNames;
 };
 
+/**
+ * @private
+ */
 pimcore.elementservice.deleteElementFromServer = function (r, options, button) {
 
     if (button == "ok" && r.deletejobs) {
@@ -127,10 +145,15 @@ pimcore.elementservice.deleteElementFromServer = function (r, options, button) {
                 const preDeleteEvent = new CustomEvent(pimcore.events[preDeleteEventName], {
                     detail: {
                         elementId: elementId
-                    }
+                    },
+                    cancelable: true
                 });
 
-                document.dispatchEvent(preDeleteEvent);
+                const isAllowed = document.dispatchEvent(preDeleteEvent);
+                if (!isAllowed) {
+                    r.deletejobs = r.deletejobs.filter((job) => job[0].params.id != elementId);
+                    ids = ids.filter((id) => id != elementId);
+                }
             });
         } catch (e) {
             pimcore.helpers.showPrettyError('asset', t("error"), t("delete_failed"), e.message);
@@ -259,6 +282,9 @@ pimcore.elementservice.deleteElementFromServer = function (r, options, button) {
     }
 };
 
+/**
+ * @private
+ */
 pimcore.elementservice.updateAsset = function (id, data, callback) {
 
     if (!callback) {
@@ -510,9 +536,9 @@ pimcore.elementservice.editAssetKeyComplete = function (options, button, value, 
                 record = store.getById(id);
                 // check for ident filename in current level
 
-                var parentChilds = record.parentNode.childNodes;
-                for (var i = 0; i < parentChilds.length; i++) {
-                    if (parentChilds[i].data.text == value && this != parentChilds[i].data.text) {
+                var parentChildren = record.parentNode.childNodes;
+                for (var i = 0; i < parentChildren.length; i++) {
+                    if (parentChildren[i].data.text == value && this != parentChildren[i].data.text) {
                         Ext.MessageBox.alert(t('rename'), t('name_already_in_use'));
                         return;
                     }
@@ -680,9 +706,9 @@ pimcore.elementservice.isDisallowedDocumentKey = function (parentNodeId, key) {
 pimcore.elementservice.isKeyExistingInLevel = function(parentNode, key, node) {
 
     key = pimcore.helpers.getValidFilename(key, parentNode.data.elementType);
-    var parentChilds = parentNode.childNodes;
-    for (var i = 0; i < parentChilds.length; i++) {
-        if (parentChilds[i].data.text == key && node != parentChilds[i]) {
+    var parentChildren = parentNode.childNodes;
+    for (var i = 0; i < parentChildren.length; i++) {
+        if (parentChildren[i].data.text == key && node != parentChildren[i]) {
             Ext.MessageBox.alert(t('error'),
                 t('name_already_in_use'));
             return true;

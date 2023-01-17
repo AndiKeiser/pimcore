@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.object.classes.layout.layout");
+/**
+ * @private
+ */
 pimcore.object.classes.layout.layout = Class.create({
 
     initData: function (d) {
@@ -26,7 +29,7 @@ pimcore.object.classes.layout.layout = Class.create({
             if (d.datatype && d.fieldtype && d.name) {
                 var keys = Object.keys(d);
                 for (var i = 0; i < keys.length; i++) {
-                    if (keys[i] !== 'childs' && keys[i] !== 'children') {
+                    if (keys[i] !== 'children') {
                         this.datax[keys[i]] = d[keys[i]];
                     }
                 }

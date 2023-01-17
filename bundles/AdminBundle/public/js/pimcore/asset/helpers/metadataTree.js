@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.asset.helpers.metadataTree");
+/**
+ * @private
+ */
 pimcore.asset.helpers.metadataTree = Class.create({
 
     showFieldName: false,
@@ -130,13 +133,7 @@ pimcore.asset.helpers.metadataTree = Class.create({
         var keys = Object.keys(data);
         for (var i = 0; i < keys.length; i++) {
             if (data[keys[i]]) {
-                
-                //BC layer for asset metadata class definition
-                //TODO: Remove this in Pimcore 11 
-                if(!data[keys[i]].children) {
-                    data[keys[i]].children = data[keys[i]].childs;
-                }
-                
+
                 if (data[keys[i]].children) {
 
                     var text = t(data[keys[i]].nodeLabel);

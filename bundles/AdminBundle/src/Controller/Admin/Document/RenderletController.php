@@ -52,7 +52,7 @@ class RenderletController extends AdminController
         ActionRenderer $actionRenderer,
         EditableHandler $editableHandler,
         LocaleServiceInterface $localeService
-    ) {
+    ): Response {
         $query = $request->query->all();
         $attributes = [];
 
@@ -73,8 +73,8 @@ class RenderletController extends AdminController
         }
 
         // set document if set in request
-        if ($document = $request->get('pimcore_parentDocument')) {
-            $document = Document\PageSnippet::getById($document);
+        if ($documentId = $request->get('pimcore_parentDocument')) {
+            $document = Document\PageSnippet::getById((int) $documentId);
             if ($document) {
                 $attributes = $actionRenderer->addDocumentAttributes($document, $attributes);
                 unset($attributes[DynamicRouter::CONTENT_TEMPLATE]);
@@ -125,7 +125,7 @@ class RenderletController extends AdminController
         return $element;
     }
 
-    private function configureElementTargeting(Request $request, ElementInterface $element)
+    private function configureElementTargeting(Request $request, ElementInterface $element): void
     {
         if (!$element instanceof Document\Targeting\TargetingDocumentInterface) {
             return;

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -18,7 +19,6 @@ namespace Pimcore\Bundle\AdminBundle\Controller\Admin;
 use Pimcore\Bundle\AdminBundle\Controller\AdminController;
 use Pimcore\Config;
 use Pimcore\Controller\Config\ControllerDataProvider;
-use Pimcore\Db;
 use Pimcore\File;
 use Pimcore\Localization\LocaleServiceInterface;
 use Pimcore\Tool;
@@ -47,7 +47,7 @@ class MiscController extends AdminController
      *
      * @return JsonResponse
      */
-    public function getAvailableControllerReferencesAction(Request $request, ControllerDataProvider $provider)
+    public function getAvailableControllerReferencesAction(Request $request, ControllerDataProvider $provider): JsonResponse
     {
         $controllerReferences = $provider->getControllerReferences();
 
@@ -69,7 +69,7 @@ class MiscController extends AdminController
      *
      * @return JsonResponse
      */
-    public function getAvailableTemplatesAction(ControllerDataProvider $provider)
+    public function getAvailableTemplatesAction(ControllerDataProvider $provider): JsonResponse
     {
         $templates = $provider->getTemplates();
 
@@ -89,24 +89,26 @@ class MiscController extends AdminController
     /**
      * @Route("/json-translations-system", name="pimcore_admin_misc_jsontranslationssystem", methods={"GET"})
      *
-     * @param Request $request
      *
-     * @return Response
      */
-    public function jsonTranslationsSystemAction(Request $request, TranslatorInterface $translator)
+    public function jsonTranslationsSystemAction(Request $request, TranslatorInterface $translator): Response
     {
         $language = $request->get('language');
 
         /** @var Translator $translator */
         $translator->lazyInitialize('admin', $language);
 
-        $translations = $translator->getCatalogue($language)->all('admin');
-        if ($language != 'en') {
-            // add en as a fallback
-            $translator->lazyInitialize('admin', 'en');
-            foreach ($translator->getCatalogue('en')->all('admin') as $key => $value) {
-                if (!isset($translations[$key]) || empty($translations[$key])) {
-                    $translations[$key] = $value;
+        $translations = [];
+
+        foreach (['admin', 'admin_ext'] as $domain) {
+            $translations = array_merge($translations, $translator->getCatalogue($language)->all($domain));
+            if ($language != 'en') {
+                // add en as a fallback
+                $translator->lazyInitialize($domain, 'en');
+                foreach ($translator->getCatalogue('en')->all($domain) as $key => $value) {
+                    if (empty($translations[$key])) {
+                        $translations[$key] = $value;
+                    }
                 }
             }
         }
@@ -124,7 +126,7 @@ class MiscController extends AdminController
      *
      * @return Response
      */
-    public function scriptProxyAction(Request $request)
+    public function scriptProxyAction(Request $request): Response
     {
         if ($storageFile = $request->get('storageFile')) {
             $fileExtension = \Pimcore\File::getFileExtension($storageFile);
@@ -180,7 +182,7 @@ class MiscController extends AdminController
      *
      * @return Response
      */
-    public function adminCssAction(Request $request, Config $config)
+    public function adminCssAction(Request $request, Config $config): Response
     {
         // customviews config
         $cvData = \Pimcore\CustomView\Config::get();
@@ -207,7 +209,7 @@ class MiscController extends AdminController
      *
      * @return JsonResponse
      */
-    public function pingAction(Request $request)
+    public function pingAction(Request $request): JsonResponse
     {
         $response = [
             'success' => true,
@@ -223,7 +225,7 @@ class MiscController extends AdminController
      *
      * @return Response
      */
-    public function availableLanguagesAction(Request $request)
+    public function availableLanguagesAction(Request $request): Response
     {
         $locales = Tool::getSupportedLocales();
         $response = new Response('pimcore.available_languages = ' . $this->encodeJson($locales) . ';');
@@ -239,7 +241,7 @@ class MiscController extends AdminController
      *
      * @return JsonResponse
      */
-    public function getValidFilenameAction(Request $request)
+    public function getValidFilenameAction(Request $request): JsonResponse
     {
         return $this->adminJson([
             'filename' => \Pimcore\Model\Element\Service::getValidKey($request->get('value'), $request->get('type')),
@@ -255,7 +257,7 @@ class MiscController extends AdminController
      *
      * @return JsonResponse
      */
-    public function fileexplorerTreeAction(Request $request)
+    public function fileexplorerTreeAction(Request $request): JsonResponse
     {
         $this->checkPermission('fileexplorer');
         $referencePath = $this->getFileexplorerPath($request, 'node');
@@ -304,7 +306,7 @@ class MiscController extends AdminController
      *
      * @return JsonResponse
      */
-    public function fileexplorerContentAction(Request $request)
+    public function fileexplorerContentAction(Request $request): JsonResponse
     {
         $this->checkPermission('fileexplorer');
 
@@ -336,7 +338,7 @@ class MiscController extends AdminController
      *
      * @return JsonResponse
      */
-    public function fileexplorerContentSaveAction(Request $request)
+    public function fileexplorerContentSaveAction(Request $request): JsonResponse
     {
         $this->checkPermission('fileexplorer');
 
@@ -365,7 +367,7 @@ class MiscController extends AdminController
      *
      * @throws \Exception
      */
-    public function fileexplorerAddAction(Request $request)
+    public function fileexplorerAddAction(Request $request): JsonResponse
     {
         $this->checkPermission('fileexplorer');
 
@@ -401,7 +403,7 @@ class MiscController extends AdminController
      *
      * @throws \Exception
      */
-    public function fileexplorerAddFolderAction(Request $request)
+    public function fileexplorerAddFolderAction(Request $request): JsonResponse
     {
         $this->checkPermission('fileexplorer');
 
@@ -435,7 +437,7 @@ class MiscController extends AdminController
      *
      * @return JsonResponse
      */
-    public function fileexplorerDeleteAction(Request $request)
+    public function fileexplorerDeleteAction(Request $request): JsonResponse
     {
         $this->checkPermission('fileexplorer');
         $success = false;
@@ -460,7 +462,7 @@ class MiscController extends AdminController
      *
      * @return JsonResponse
      */
-    public function fileexplorerRenameAction(Request $request)
+    public function fileexplorerRenameAction(Request $request): JsonResponse
     {
         $this->checkPermission('fileexplorer');
         $success = false;
@@ -478,14 +480,9 @@ class MiscController extends AdminController
     }
 
     /**
-     * @param Request $request
-     * @param string $paramName
-     *
-     * @return string
-     *
      * @throws \Exception
      */
-    private function getFileexplorerPath(Request $request, $paramName = 'node')
+    private function getFileexplorerPath(Request $request, string $paramName = 'node'): string
     {
         $path = preg_replace("/^\/fileexplorer/", '', $request->get($paramName));
         $path = resolvePath(PIMCORE_PROJECT_ROOT . $path);
@@ -504,7 +501,7 @@ class MiscController extends AdminController
      *
      * @return JsonResponse
      */
-    public function maintenanceAction(Request $request)
+    public function maintenanceAction(Request $request): JsonResponse
     {
         $this->checkPermission('maintenance_mode');
 
@@ -522,115 +519,13 @@ class MiscController extends AdminController
     }
 
     /**
-     * @Route("/http-error-log", name="pimcore_admin_misc_httperrorlog", methods={"POST"})
-     *
-     * @param Request $request
-     *
-     * @return JsonResponse
-     */
-    public function httpErrorLogAction(Request $request)
-    {
-        $this->checkPermission('http_errors');
-
-        $db = Db::get();
-
-        $limit = (int)$request->get('limit');
-        $offset = (int)$request->get('start');
-        $sortInfo = ($request->get('sort') ? json_decode($request->get('sort'), true)[0] : []);
-        $sort = $sortInfo['property'] ?? null;
-        $dir = $sortInfo['direction'] ?? null;
-        $filter = $request->get('filter');
-        if (!$limit) {
-            $limit = 20;
-        }
-        if (!$offset) {
-            $offset = 0;
-        }
-        if (!$sort || !in_array($sort, ['code', 'uri', 'date', 'count'])) {
-            $sort = 'count';
-        }
-        if (!$dir || !in_array($dir, ['DESC', 'ASC'])) {
-            $dir = 'DESC';
-        }
-
-        $condition = '';
-        if ($filter) {
-            $filter = $db->quote('%' . $filter . '%');
-
-            $conditionParts = [];
-            foreach (['uri', 'code', 'parametersGet', 'parametersPost', 'serverVars', 'cookies'] as $field) {
-                $conditionParts[] = $field . ' LIKE ' . $filter;
-            }
-            $condition = ' WHERE ' . implode(' OR ', $conditionParts);
-        }
-
-        $logs = $db->fetchAllAssociative('SELECT code,uri,`count`,date FROM http_error_log ' . $condition . ' ORDER BY ' . $sort . ' ' . $dir . ' LIMIT ' . $offset . ',' . $limit);
-        $total = $db->fetchOne('SELECT count(*) FROM http_error_log ' . $condition);
-
-        return $this->adminJson([
-            'items' => $logs,
-            'total' => $total,
-            'success' => true,
-        ]);
-    }
-
-    /**
-     * @Route("/http-error-log-flush", name="pimcore_admin_misc_httperrorlogflush", methods={"DELETE"})
-     *
-     * @param Request $request
-     *
-     * @return JsonResponse
-     */
-    public function httpErrorLogFlushAction(Request $request)
-    {
-        $this->checkPermission('http_errors');
-
-        $db = Db::get();
-        $db->executeQuery('TRUNCATE TABLE http_error_log');
-
-        return $this->adminJson([
-            'success' => true,
-        ]);
-    }
-
-    /**
-     * @Route("/http-error-log-detail", name="pimcore_admin_misc_httperrorlogdetail", methods={"GET"})
-     *
-     * @param Request $request
-     * @param Profiler|null $profiler
-     *
-     * @return Response
-     */
-    public function httpErrorLogDetailAction(Request $request, ?Profiler $profiler)
-    {
-        $this->checkPermission('http_errors');
-
-        if ($profiler) {
-            $profiler->disable();
-        }
-
-        $db = Db::get();
-        $data = $db->fetchAssociative('SELECT * FROM http_error_log WHERE uri = ?', [$request->get('uri')]);
-
-        foreach ($data as $key => &$value) {
-            if (in_array($key, ['parametersGet', 'parametersPost', 'serverVars', 'cookies'])) {
-                $value = unserialize($value);
-            }
-        }
-
-        $response = $this->render('@PimcoreAdmin/admin/misc/http_error_log_detail.html.twig', ['data' => $data]);
-
-        return $response;
-    }
-
-    /**
      * @Route("/country-list", name="pimcore_admin_misc_countrylist", methods={"GET"})
      *
      * @param LocaleServiceInterface $localeService
      *
      * @return JsonResponse
      */
-    public function countryListAction(LocaleServiceInterface $localeService)
+    public function countryListAction(LocaleServiceInterface $localeService): JsonResponse
     {
         $countries = $localeService->getDisplayRegions();
         asort($countries);
@@ -655,7 +550,7 @@ class MiscController extends AdminController
      *
      * @return JsonResponse
      */
-    public function languageListAction(Request $request)
+    public function languageListAction(Request $request): JsonResponse
     {
         $locales = Tool::getSupportedLocales();
         $options = [];
@@ -671,40 +566,13 @@ class MiscController extends AdminController
     }
 
     /**
-     * @Route("/phpinfo", name="pimcore_admin_misc_phpinfo", methods={"GET"})
-     *
-     * @param Request $request
-     * @param Profiler|null $profiler
-     *
-     * @throws \Exception
-     *
-     * @return Response
-     */
-    public function phpinfoAction(Request $request, ?Profiler $profiler)
-    {
-        if ($profiler) {
-            $profiler->disable();
-        }
-
-        if (!$this->getAdminUser()->isAdmin()) {
-            throw new \Exception('Permission denied');
-        }
-
-        ob_start();
-        phpinfo();
-        $content = ob_get_clean();
-
-        return new Response($content);
-    }
-
-    /**
      * @Route("/get-language-flag", name="pimcore_admin_misc_getlanguageflag", methods={"GET"})
      *
      * @param Request $request
      *
      * @return BinaryFileResponse
      */
-    public function getLanguageFlagAction(Request $request)
+    public function getLanguageFlagAction(Request $request): BinaryFileResponse
     {
         $iconPath = Tool::getLanguageFlagFile($request->get('language'));
         $response = new BinaryFileResponse($iconPath);
@@ -721,7 +589,7 @@ class MiscController extends AdminController
      *
      * @return Response
      */
-    public function iconListAction(Request $request, ?Profiler $profiler)
+    public function iconListAction(Request $request, ?Profiler $profiler): Response
     {
         if ($profiler) {
             $profiler->disable();
@@ -764,7 +632,7 @@ class MiscController extends AdminController
      *
      * @return Response
      */
-    public function testAction(Request $request)
+    public function testAction(Request $request): Response
     {
         return new Response('done');
     }

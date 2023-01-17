@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.object.tags.numeric");
+/**
+ * @private
+ */
 pimcore.object.tags.numeric = Class.create(pimcore.object.tags.abstract, {
 
     type: "numeric",
@@ -139,6 +142,8 @@ pimcore.object.tags.numeric = Class.create(pimcore.object.tags.abstract, {
         var input = {
             fieldLabel: this.fieldConfig.title,
             name: this.fieldConfig.name,
+            labelWidth: 100,
+            width: 175,
             componentCls: this.getWrapperClassNames(),
         };
 

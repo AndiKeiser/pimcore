@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.object.tags.reverseObjectRelation");
+/**
+ * @private
+ */
 pimcore.object.tags.reverseObjectRelation = Class.create(pimcore.object.tags.manyToManyObjectRelation, {
 
     pathProperty: "fullpath",
@@ -318,17 +321,16 @@ pimcore.object.tags.reverseObjectRelation = Class.create(pimcore.object.tags.man
         allowedClasses.push(record.data.text);
 
 
-        pimcore.helpers.itemselector(true, this.addDataFromSelector.bind(this), {
-            type: ["object"],
-            subtype: [
-                {
+        pimcore.helpers.itemselector(true, this.addDataFromSelector.bind(this),
+            {
+                type: ["object"],
+                subtype: {
                     object: ["object", "variant"]
+                },
+                specific: {
+                    classes: allowedClasses
                 }
-            ],
-            specific: {
-                classes: allowedClasses
-            }
-        },
+            },
             {
                 context: Ext.apply({scope: "objectEditor"}, this.getContext())
             });

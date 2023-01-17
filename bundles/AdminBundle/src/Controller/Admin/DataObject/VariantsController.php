@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -43,8 +44,8 @@ class VariantsController extends AdminController
      */
     public function updateKeyAction(Request $request): JsonResponse
     {
-        $id = $request->get('id');
-        $key = $request->get('key');
+        $id = $request->request->getInt('id');
+        $key = $request->request->get('key');
         $object = DataObject\Concrete::getById($id);
 
         return $this->adminJson($this->renameObject($object, $key));

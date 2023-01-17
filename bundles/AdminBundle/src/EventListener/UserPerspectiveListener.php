@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -34,14 +35,8 @@ class UserPerspectiveListener implements EventSubscriberInterface, LoggerAwareIn
     use LoggerAwareTrait;
     use PimcoreContextAwareTrait;
 
-    /**
-     * @var TokenStorageUserResolver
-     */
-    protected $userResolver;
+    protected TokenStorageUserResolver $userResolver;
 
-    /**
-     * @param TokenStorageUserResolver $userResolver
-     */
     public function __construct(TokenStorageUserResolver $userResolver)
     {
         $this->userResolver = $userResolver;
@@ -57,7 +52,7 @@ class UserPerspectiveListener implements EventSubscriberInterface, LoggerAwareIn
         ];
     }
 
-    public function onKernelRequest(RequestEvent $event)
+    public function onKernelRequest(RequestEvent $event): void
     {
         $request = $event->getRequest();
 
@@ -74,11 +69,7 @@ class UserPerspectiveListener implements EventSubscriberInterface, LoggerAwareIn
         }
     }
 
-    /**
-     * @param User $user
-     * @param Request $request
-     */
-    protected function setRequestedPerspective(User $user, Request $request)
+    protected function setRequestedPerspective(User $user, Request $request): void
     {
         // update perspective settings
         $requestedPerspective = $request->get('perspective');

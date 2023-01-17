@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -16,9 +17,7 @@
 namespace Pimcore\Bundle\AdminBundle\Controller\Admin;
 
 use Pimcore\Bundle\AdminBundle\Controller\AdminController;
-use Pimcore\Bundle\AdminBundle\Controller\BruteforceProtectedControllerInterface;
 use Pimcore\Bundle\AdminBundle\Security\Authenticator\AdminLoginAuthenticator;
-use Pimcore\Bundle\AdminBundle\Security\BruteforceProtectionHandler;
 use Pimcore\Bundle\AdminBundle\Security\CsrfProtectionHandler;
 use Pimcore\Config;
 use Pimcore\Controller\KernelControllerEventInterface;
@@ -31,6 +30,7 @@ use Pimcore\Logger;
 use Pimcore\Model\User;
 use Pimcore\Tool;
 use Pimcore\Tool\Authentication;
+use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -47,17 +47,14 @@ use Symfony\Contracts\Translation\LocaleAwareInterface;
 /**
  * @internal
  */
-class LoginController extends AdminController implements BruteforceProtectedControllerInterface, KernelControllerEventInterface, KernelResponseEventInterface
+class LoginController extends AdminController implements KernelControllerEventInterface, KernelResponseEventInterface
 {
     public function __construct(
         protected ResponseHelper $responseHelper,
     ) {
     }
 
-    /**
-     * @param ControllerEvent $event
-     */
-    public function onKernelControllerEvent(ControllerEvent $event)
+    public function onKernelControllerEvent(ControllerEvent $event): void
     {
         // use browser language for login page if possible
         $locale = 'en';
@@ -71,15 +68,12 @@ class LoginController extends AdminController implements BruteforceProtectedCont
             }
         }
 
-        if ($this->getTranslator() instanceof LocaleAwareInterface) {
-            $this->getTranslator()->setLocale($locale);
+        if ($this->translator instanceof LocaleAwareInterface) {
+            $this->translator->setLocale($locale);
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function onKernelResponseEvent(ResponseEvent $event)
+    public function onKernelResponseEvent(ResponseEvent $event): void
     {
         $response = $event->getResponse();
         $response->headers->set('X-Frame-Options', 'deny', true);
@@ -90,8 +84,12 @@ class LoginController extends AdminController implements BruteforceProtectedCont
      * @Route("/login", name="pimcore_admin_login")
      * @Route("/login/", name="pimcore_admin_login_fallback")
      */
-    public function loginAction(Request $request, CsrfProtectionHandler $csrfProtection, Config $config)
-    {
+    public function loginAction(
+        Request $request,
+        CsrfProtectionHandler $csrfProtection,
+        Config $config,
+        EventDispatcherInterface $eventDispatcher
+    ): RedirectResponse|Response {
         if ($request->get('_route') === 'pimcore_admin_login_fallback') {
             return $this->redirectToRoute('pimcore_admin_login', $request->query->all(), Response::HTTP_MOVED_PERMANENTLY);
         }
@@ -125,13 +123,22 @@ class LoginController extends AdminController implements BruteforceProtectedCont
         $params['browserSupported'] = $this->detectBrowser();
         $params['debug'] = \Pimcore::inDebugMode();
 
+        $params['includeTemplates'] = [];
+        $event = new GenericEvent($this, [
+            'parameters' => $params,
+            'config' => $config,
+            'request' => $request,
+        ]);
+        $eventDispatcher->dispatch($event, AdminEvents::LOGIN_BEFORE_RENDER);
+        $params = $event->getArgument('parameters');
+
         return $this->render('@PimcoreAdmin/admin/login/login.html.twig', $params);
     }
 
     /**
      * @Route("/login/csrf-token", name="pimcore_admin_login_csrf_token")
      */
-    public function csrfTokenAction(Request $request, CsrfProtectionHandler $csrfProtection)
+    public function csrfTokenAction(Request $request, CsrfProtectionHandler $csrfProtection): \Symfony\Component\HttpFoundation\JsonResponse
     {
         if (!$this->getAdminUser()) {
             $csrfProtection->regenerateCsrfToken();
@@ -145,7 +152,7 @@ class LoginController extends AdminController implements BruteforceProtectedCont
     /**
      * @Route("/logout", name="pimcore_admin_logout" , methods={"POST"})
      */
-    public function logoutAction()
+    public function logoutAction(): void
     {
         // this route will never be matched, but will be handled by the logout handler
     }
@@ -156,9 +163,8 @@ class LoginController extends AdminController implements BruteforceProtectedCont
      * @Route("/login/login", name="pimcore_admin_login_check")
      *
      * @see AdminLoginAuthenticator for the security implementation
-     * @see AdminAuthenticator for the security implementation (Authenticator Based Security)
      */
-    public function loginCheckAction()
+    public function loginCheckAction(): RedirectResponse
     {
         // just in case the authenticator didn't redirect
         return new RedirectResponse($this->generateUrl('pimcore_admin_login'));
@@ -167,7 +173,7 @@ class LoginController extends AdminController implements BruteforceProtectedCont
     /**
      * @Route("/login/lostpassword", name="pimcore_admin_login_lostpassword")
      */
-    public function lostpasswordAction(Request $request, ?BruteforceProtectionHandler $bruteforceProtectionHandler, CsrfProtectionHandler $csrfProtection, Config $config, EventDispatcherInterface $eventDispatcher)
+    public function lostpasswordAction(Request $request, CsrfProtectionHandler $csrfProtection, Config $config, EventDispatcherInterface $eventDispatcher): Response
     {
         $params = $this->buildLoginPageViewParams($config);
         $error = null;
@@ -223,7 +229,6 @@ class LoginController extends AdminController implements BruteforceProtectedCont
 
             if ($error) {
                 Logger::error('Lost password service: ' . $error);
-                $bruteforceProtectionHandler?->addEntry($request->get('username'), $request);
             }
         }
 
@@ -235,14 +240,14 @@ class LoginController extends AdminController implements BruteforceProtectedCont
     /**
      * @Route("/login/deeplink", name="pimcore_admin_login_deeplink")
      */
-    public function deeplinkAction(Request $request, EventDispatcherInterface $eventDispatcher)
+    public function deeplinkAction(Request $request, EventDispatcherInterface $eventDispatcher): Response
     {
         // check for deeplink
         $queryString = $_SERVER['QUERY_STRING'];
 
         if (preg_match('/(document|asset|object)_([0-9]+)_([a-z]+)/', $queryString, $deeplink)) {
             $deeplink = $deeplink[0];
-            $perspective = strip_tags($request->get('perspective'));
+            $perspective = strip_tags($request->get('perspective', ''));
 
             if (strpos($queryString, 'token')) {
                 $event = new LoginRedirectEvent('pimcore_admin_login', [
@@ -268,35 +273,32 @@ class LoginController extends AdminController implements BruteforceProtectedCont
                 ]);
             }
         }
+
+        throw $this->createNotFoundException();
     }
 
     protected function buildLoginPageViewParams(Config $config): array
     {
         return [
             'config' => $config,
-            'pluginCssPaths' => $this->getBundleManager()->getCssPaths(),
+            'pluginCssPaths' => $this->bundleManager->getCssPaths(),
         ];
     }
 
     /**
      * @Route("/login/2fa", name="pimcore_admin_2fa")
      */
-    public function twoFactorAuthenticationAction(Request $request, ?BruteforceProtectionHandler $bruteforceProtectionHandler, Config $config)
+    public function twoFactorAuthenticationAction(Request $request, Config $config): Response
     {
         $params = $this->buildLoginPageViewParams($config);
 
         if ($request->hasSession()) {
-            // we have to call the check here manually, because BruteforceProtectionListener uses the 'username' from the request
-            $bruteforceProtectionHandler?->checkProtection($this->getAdminUser()->getName(), $request);
-
             $session = $request->getSession();
             $authException = $session->get(Security::AUTHENTICATION_ERROR);
             if ($authException instanceof AuthenticationException) {
                 $session->remove(Security::AUTHENTICATION_ERROR);
 
                 $params['error'] = $authException->getMessage();
-
-                $bruteforceProtectionHandler?->addEntry($this->getAdminUser()->getName(), $request);
             }
         } else {
             $params['error'] = 'No session available, it either timed out or cookies are not enabled.';
@@ -310,14 +312,11 @@ class LoginController extends AdminController implements BruteforceProtectedCont
      *
      * @param Request $request
      */
-    public function twoFactorAuthenticationVerifyAction(Request $request)
+    public function twoFactorAuthenticationVerifyAction(Request $request): void
     {
     }
 
-    /**
-     * @return bool
-     */
-    public function detectBrowser()
+    public function detectBrowser(): bool
     {
         $supported = false;
         $browser = new \Browser();

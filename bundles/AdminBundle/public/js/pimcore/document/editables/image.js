@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.document.editables.image");
+/**
+ * @private
+ */
 pimcore.document.editables.image = Class.create(pimcore.document.editable, {
 
     initialize: function($super, id, name, config, data, inherited) {
@@ -242,7 +245,17 @@ pimcore.document.editables.image = Class.create(pimcore.document.editable, {
             } catch (e) {
                 console.log(e);
             }
-        }.bind(this));
+        }.bind(this),
+        function (res) {
+            const response = Ext.decode(res.response.responseText);
+            if (response && response.success === false) {
+                pimcore.helpers.showNotification(t("error"), response.message, "error",
+                    res.response.responseText);
+            } else {
+                pimcore.helpers.showNotification(t("error"), res, "error",
+                    res.response.responseText);
+            }
+        }.bind(this), [] ,this.getType());
     },
 
     onNodeOver: function(target, dd, e, data) {

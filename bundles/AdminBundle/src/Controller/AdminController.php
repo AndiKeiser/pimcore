@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -27,29 +28,39 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Serializer\Encoder\DecoderInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Translation\Exception\InvalidArgumentException;
+use Symfony\Contracts\Service\Attribute\Required;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 abstract class AdminController extends Controller implements AdminControllerInterface
 {
-    /**
-     * @var TokenStorageUserResolver
-     */
-    protected $tokenResolver;
+    protected TokenStorageUserResolver $tokenResolver;
 
-    /**
-     * @var TranslatorInterface
-     */
-    protected $translator;
+    protected TranslatorInterface $translator;
 
-    /**
-     * @var PimcoreBundleManager
-     */
-    protected $bundleManager;
+    protected PimcoreBundleManager $bundleManager;
+
+    #[Required]
+    public function setTranslator(TranslatorInterface $translator): void
+    {
+        $this->translator = $translator;
+    }
+
+    #[Required]
+    public function setBundleManager(PimcoreBundleManager $bundleManager): void
+    {
+        $this->bundleManager = $bundleManager;
+    }
+
+    #[Required]
+    public function setTokenResolver(TokenStorageUserResolver $tokenResolver): void
+    {
+        $this->tokenResolver = $tokenResolver;
+    }
 
     /**
      * @return string[]
      */
-    public static function getSubscribedServices()// : array
+    public static function getSubscribedServices(): array
     {
         $services = parent::getSubscribedServices();
         $services['translator'] = TranslatorInterface::class;
@@ -63,7 +74,7 @@ abstract class AdminController extends Controller implements AdminControllerInte
     /**
      * {@inheritdoc}
      */
-    public function needsSessionDoubleAuthenticationCheck()
+    public function needsSessionDoubleAuthenticationCheck(): bool
     {
         return true;
     }
@@ -71,24 +82,9 @@ abstract class AdminController extends Controller implements AdminControllerInte
     /**
      * {@inheritdoc}
      */
-    public function needsStorageDoubleAuthenticationCheck()
+    public function needsStorageDoubleAuthenticationCheck(): bool
     {
         return true;
-    }
-
-    public function getTranslator()
-    {
-        return $this->container->get('translator');
-    }
-
-    public function getBundleManager()
-    {
-        return $this->container->get(PimcoreBundleManager::class);
-    }
-
-    public function getTokenResolver()
-    {
-        return $this->container->get(TokenStorageUserResolver::class);
     }
 
     /**
@@ -98,13 +94,13 @@ abstract class AdminController extends Controller implements AdminControllerInte
      *
      * @return UserProxy|User|null
      */
-    protected function getAdminUser($proxyUser = false)
+    protected function getAdminUser(bool $proxyUser = false): User|UserProxy|null
     {
         if ($proxyUser) {
-            return $this->getTokenResolver()->getUserProxy();
+            return $this->tokenResolver->getUserProxy();
         }
 
-        return $this->getTokenResolver()->getUser();
+        return $this->tokenResolver->getUser();
     }
 
     /**
@@ -114,7 +110,7 @@ abstract class AdminController extends Controller implements AdminControllerInte
      *
      * @throws AccessDeniedHttpException
      */
-    protected function checkPermission($permission)
+    protected function checkPermission(string $permission): void
     {
         if (!$this->getAdminUser() || !$this->getAdminUser()->isAllowed($permission)) {
             Logger::error(
@@ -146,7 +142,7 @@ abstract class AdminController extends Controller implements AdminControllerInte
     /**
      * @param string[] $permissions
      */
-    protected function checkPermissionsHasOneOf(array $permissions)
+    protected function checkPermissionsHasOneOf(array $permissions): void
     {
         $allowed = false;
         $permission = null;
@@ -178,7 +174,7 @@ abstract class AdminController extends Controller implements AdminControllerInte
      * @param string $permission
      * @param array $unrestrictedActions
      */
-    protected function checkActionPermission(ControllerEvent $event, string $permission, array $unrestrictedActions = [])
+    protected function checkActionPermission(ControllerEvent $event, string $permission, array $unrestrictedActions = []): void
     {
         $actionName = null;
         $controller = $event->getController();
@@ -204,7 +200,7 @@ abstract class AdminController extends Controller implements AdminControllerInte
      *
      * @return string
      */
-    protected function encodeJson($data, array $context = [], $options = JsonResponse::DEFAULT_ENCODING_OPTIONS, bool $useAdminSerializer = true)
+    protected function encodeJson(mixed $data, array $context = [], int $options = JsonResponse::DEFAULT_ENCODING_OPTIONS, bool $useAdminSerializer = true): string
     {
         /** @var SerializerInterface $serializer */
         $serializer = null;
@@ -230,7 +226,7 @@ abstract class AdminController extends Controller implements AdminControllerInte
      *
      * @return mixed
      */
-    protected function decodeJson($json, $associative = true, array $context = [], bool $useAdminSerializer = true)
+    protected function decodeJson(mixed $json, bool $associative = true, array $context = [], bool $useAdminSerializer = true): mixed
     {
         /** @var SerializerInterface|DecoderInterface $serializer */
         $serializer = null;
@@ -259,7 +255,7 @@ abstract class AdminController extends Controller implements AdminControllerInte
      *
      * @return JsonResponse
      */
-    protected function adminJson($data, $status = 200, $headers = [], $context = [], bool $useAdminSerializer = true)
+    protected function adminJson(mixed $data, int $status = 200, array $headers = [], array $context = [], bool $useAdminSerializer = true): JsonResponse
     {
         $json = $this->encodeJson($data, $context, JsonResponse::DEFAULT_ENCODING_OPTIONS, $useAdminSerializer);
 
@@ -278,8 +274,8 @@ abstract class AdminController extends Controller implements AdminControllerInte
      *
      * @throws InvalidArgumentException If the locale contains invalid characters
      */
-    public function trans($id, array $parameters = [], $domain = 'admin', $locale = null)
+    public function trans(string $id, array $parameters = [], ?string $domain = 'admin', string $locale = null): string
     {
-        return $this->getTranslator()->trans($id, $parameters, $domain, $locale);
+        return $this->translator->trans($id, $parameters, $domain, $locale);
     }
 }

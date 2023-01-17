@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -31,36 +32,27 @@ abstract class AbstractDao implements DaoInterface
      */
     public $db;
 
-    /**
-     * {@inheritdoc}
-     */
-    public function configure()
+    public function configure(): void
     {
         $this->db = Db::get();
     }
 
-    public function beginTransaction()
+    public function beginTransaction(): void
     {
         $this->db->beginTransaction();
     }
 
-    public function commit()
+    public function commit(): void
     {
         $this->db->commit();
     }
 
-    public function rollBack()
+    public function rollBack(): void
     {
         $this->db->rollBack();
     }
 
-    /**
-     * @param string $table
-     * @param bool $cache
-     *
-     * @return array|mixed
-     */
-    public function getValidTableColumns($table, $cache = true)
+    public function getValidTableColumns(string $table, bool $cache = true): array
     {
         $cacheKey = self::CACHEKEY . $table;
 
@@ -89,7 +81,7 @@ abstract class AbstractDao implements DaoInterface
      *
      * @param string $table
      */
-    public function resetValidTableColumnsCache($table)
+    public function resetValidTableColumnsCache(string $table): void
     {
         $cacheKey = self::CACHEKEY . $table;
         if (RuntimeCache::isRegistered($cacheKey)) {
@@ -98,13 +90,7 @@ abstract class AbstractDao implements DaoInterface
         Cache::clearTags(['system', 'resource']);
     }
 
-    /**
-     * @param string $table
-     * @param string $column
-     *
-     * @return string
-     */
-    public static function getForeignKeyName($table, $column)
+    public static function getForeignKeyName(string $table, string $column): string
     {
         $fkName = 'fk_'.$table.'__'.$column;
         if (strlen($fkName) > 64) {

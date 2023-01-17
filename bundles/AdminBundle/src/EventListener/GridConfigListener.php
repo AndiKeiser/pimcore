@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -41,10 +42,7 @@ class GridConfigListener implements EventSubscriberInterface
         ];
     }
 
-    /**
-     * @param DataObjectEvent $event
-     */
-    public function onObjectDelete($event)
+    public function onObjectDelete(DataObjectEvent $event): void
     {
         $object = $event->getObject();
         $objectId = $object->getId();
@@ -52,10 +50,7 @@ class GridConfigListener implements EventSubscriberInterface
         $this->cleanupGridConfigFavourites('objectId = ' . $objectId);
     }
 
-    /**
-     * @param ClassDefinitionEvent $event
-     */
-    public function onClassDelete($event)
+    public function onClassDelete(ClassDefinitionEvent $event): void
     {
         $class = $event->getClassDefinition();
         $classId = $class->getId();
@@ -71,10 +66,7 @@ class GridConfigListener implements EventSubscriberInterface
         $this->cleanupGridConfigFavourites('classId = ' . $db->quote($classId));
     }
 
-    /**
-     * @param UserRoleEvent $event
-     */
-    public function onUserDelete($event)
+    public function onUserDelete(UserRoleEvent $event): void
     {
         $user = $event->getUserRole();
         $userId = $user->getId();
@@ -90,13 +82,13 @@ class GridConfigListener implements EventSubscriberInterface
         $this->cleanupGridConfigFavourites('ownerId = ' . $userId);
     }
 
-    protected function cleanupGridConfigs($condition)
+    protected function cleanupGridConfigs(string $condition): void
     {
         $db = Db::get();
         $db->executeQuery('DELETE FROM gridconfigs where ' . $condition);
     }
 
-    protected function cleanupGridConfigFavourites($condition)
+    protected function cleanupGridConfigFavourites(string $condition): void
     {
         $db = Db::get();
         $db->executeQuery('DELETE FROM gridconfig_favourites where ' . $condition);

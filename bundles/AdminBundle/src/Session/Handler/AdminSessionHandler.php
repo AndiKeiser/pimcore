@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -28,6 +29,8 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 /**
  * @internal
+ *
+ * @deprecated
  */
 class AdminSessionHandler implements LoggerAwareInterface, AdminSessionHandlerInterface
 {
@@ -39,26 +42,13 @@ class AdminSessionHandler implements LoggerAwareInterface, AdminSessionHandlerIn
      * there is still an open session, this is especially important if something doesn't use the method use() but get()
      * so the session isn't closed automatically after the action is done
      */
-    private $openedSessions = 0;
+    private int $openedSessions = 0;
 
-    /**
-     * @deprecated
-     *
-     * @var SessionInterface
-     */
-    protected $session;
+    protected array $readOnlySessionBagsCache = [];
 
-    protected $readOnlySessionBagsCache = [];
+    private ?bool $canWriteAndClose = null;
 
-    /**
-     * @var bool|null
-     */
-    private $canWriteAndClose;
-
-    /**
-     * @var RequestHelper
-     */
-    protected $requestHelper;
+    protected RequestHelper $requestHelper;
 
     public function __construct(RequestHelper $requestHelper)
     {
@@ -68,7 +58,7 @@ class AdminSessionHandler implements LoggerAwareInterface, AdminSessionHandlerIn
     /**
      * {@inheritdoc}
      */
-    public function getSessionId()
+    public function getSessionId(): string
     {
         if (!$this->getSession()->isStarted()) {
             // this is just to initialize the session :)
@@ -80,27 +70,12 @@ class AdminSessionHandler implements LoggerAwareInterface, AdminSessionHandlerIn
         return $this->getSession()->getId();
     }
 
-    /**
-     * @return SessionInterface
-     */
-    private function getSession()
+    private function getSession(): SessionInterface
     {
-        try {
-            return $this->requestHelper->getSession();
-        } catch (\LogicException $e) {
-            $this->logger->debug('Error while getting the admin session: {exception}', ['exception' => $e->getMessage()]);
-        }
-
-        trigger_deprecation('pimcore/pimcore', '10.5',
-            sprintf('Session used with non existing request stack in %s, that will not be possible in Pimcore 11.', __CLASS__));
-
-        return \Pimcore::getContainer()->get('session');
+        return $this->requestHelper->getSession();
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getSessionName()
+    public function getSessionName(): string
     {
         return $this->getSession()->getName();
     }
@@ -108,7 +83,7 @@ class AdminSessionHandler implements LoggerAwareInterface, AdminSessionHandlerIn
     /**
      * {@inheritdoc}
      */
-    public function useSession(callable $callable)
+    public function useSession(callable $callable): mixed
     {
         $session = $this->loadSession();
 
@@ -124,7 +99,7 @@ class AdminSessionHandler implements LoggerAwareInterface, AdminSessionHandlerIn
     /**
      * {@inheritdoc}
      */
-    public function useSessionAttributeBag(callable $callable, string $name = 'pimcore_admin')
+    public function useSessionAttributeBag(callable $callable, string $name = 'pimcore_admin'): mixed
     {
         $session = $this->loadSession();
         $attributeBag = $this->loadAttributeBag($name, $session);
@@ -244,9 +219,6 @@ class AdminSessionHandler implements LoggerAwareInterface, AdminSessionHandlerIn
         throw new \RuntimeException('Failed to get session ID from request');
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function loadSession(): SessionInterface
     {
         $sessionName = $this->getSessionName();
@@ -270,7 +242,7 @@ class AdminSessionHandler implements LoggerAwareInterface, AdminSessionHandlerIn
     /**
      * {@inheritdoc}
      */
-    public function writeClose()
+    public function writeClose(): void
     {
         if (!$this->shouldWriteAndClose()) {
             return;
@@ -292,17 +264,14 @@ class AdminSessionHandler implements LoggerAwareInterface, AdminSessionHandlerIn
         }
     }
 
-    /**
-     * @return bool
-     */
     private function shouldWriteAndClose(): bool
     {
-        return $this->canWriteAndClose ??= $this->isAdminRequest($this->requestHelper->getMainRequest());
+        // main request is not available in CLI, so session should be written
+        // otherwise session should be written & closed in Admin context only.
+        return $this->canWriteAndClose ??= !$this->requestHelper->hasMainRequest()
+            || $this->isAdminRequest($this->requestHelper->getMainRequest());
     }
 
-    /**
-     * @return bool
-     */
     private function isAdminRequest(Request $request): bool
     {
         return $this->matchesPimcoreContext($request, PimcoreContextResolver::CONTEXT_ADMIN)

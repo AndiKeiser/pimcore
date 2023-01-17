@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.asset.folder");
+/**
+ * @private
+ */
 pimcore.asset.folder = Class.create(pimcore.asset.asset, {
 
     initialize: function(id, options) {
@@ -25,10 +28,15 @@ pimcore.asset.folder = Class.create(pimcore.asset.asset, {
             detail: {
                 object: this,
                 type: "folder"
-            }
+            },
+            cancelable: true
         });
 
-        document.dispatchEvent(preOpenAssetFolder);
+        const isAllowed = document.dispatchEvent(preOpenAssetFolder);
+        if (!isAllowed) {
+            this.removeLoadingPanel();
+            return;
+        }
 
         var user = pimcore.globalmanager.get("user");
 
@@ -291,17 +299,14 @@ pimcore.asset.folder = Class.create(pimcore.asset.asset, {
                 });
             }
 
-            var user = pimcore.globalmanager.get("user");
-            if (user.admin) {
-                buttons.push({
-                    xtype: "splitbutton",
-                    tooltip: t("show_metainfo"),
-                    iconCls: "pimcore_material_icon_info pimcore_material_icon",
-                    scale: "medium",
-                    handler: this.showMetaInfo.bind(this),
-                    menu: this.getMetaInfoMenuItems()
-                });
-            }
+            buttons.push({
+                xtype: "splitbutton",
+                tooltip: t("show_metainfo"),
+                iconCls: "pimcore_material_icon_info pimcore_material_icon",
+                scale: "medium",
+                handler: this.showMetaInfo.bind(this),
+                menu: this.getMetaInfoMenuItems()
+            });
 
             buttons.push("-");
             buttons.push({
@@ -331,7 +336,9 @@ pimcore.asset.folder = Class.create(pimcore.asset.asset, {
             modificationdate: this.data.modificationDate,
             creationdate: this.data.creationDate,
             usermodification: this.data.userModification,
+            usermodification_name: this.data.userModificationFullname,
             userowner: this.data.userOwner,
+            userowner_name: this.data.userOwnerFullname,
             deeplink: pimcore.helpers.getDeeplink("asset", this.data.id, this.data.type)
         };
     },
@@ -361,13 +368,12 @@ pimcore.asset.folder = Class.create(pimcore.asset.asset, {
             }, {
                 name: "usermodification",
                 type: "user",
-                value: metainfo.usermodification
+                value: '<span data-uid="' + metainfo.usermodification + '">' + metainfo.usermodification_name + '</span>'
             }, {
                 name: "userowner",
                 type: "user",
-                value: metainfo.userowner
-            },
-            {
+                value: '<span data-uid="' + metainfo.userowner + '">' + metainfo.userowner_name + '</span>'
+            }, {
                 name: "deeplink",
                 value: metainfo.deeplink
             }
@@ -386,4 +392,3 @@ pimcore.asset.folder = Class.create(pimcore.asset.asset, {
         }
     }
 });
-

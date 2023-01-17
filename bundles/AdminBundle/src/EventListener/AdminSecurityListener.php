@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -31,9 +32,6 @@ class AdminSecurityListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
-    /**
-     * @param ContentSecurityPolicyHandler $contentSecurityPolicyHandler
-     */
     public function __construct(
         protected RequestHelper $requestHelper,
         protected ContentSecurityPolicyHandler $contentSecurityPolicyHandler,
@@ -51,7 +49,7 @@ class AdminSecurityListener implements EventSubscriberInterface
         ];
     }
 
-    public function onKernelResponse(ResponseEvent $event)
+    public function onKernelResponse(ResponseEvent $event): void
     {
         if (!$this->config['admin_csp_header']['enabled']) {
             return;

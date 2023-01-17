@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.object.helpers.gridConfigDialog");
+/**
+ * @private
+ */
 pimcore.object.helpers.gridConfigDialog = Class.create(pimcore.element.helpers.gridConfigDialog, {
 
     brickKeys: [],
@@ -68,8 +71,7 @@ pimcore.object.helpers.gridConfigDialog = Class.create(pimcore.element.helpers.g
 
                 if (child.data.isOperator) {
                     var attributes = child.data.configAttributes;
-                    var operatorChilds = this.doGetRecursiveData(child);
-                    attributes.childs = operatorChilds;
+                    attributes.children = this.doGetRecursiveData(child);
                     operatorFound = true;
 
                     obj.isOperator = true;
@@ -109,6 +111,7 @@ pimcore.object.helpers.gridConfigDialog = Class.create(pimcore.element.helpers.g
             }
             this.settings.shareGlobally = this.shareGlobally ? this.shareGlobally.getValue() : false;
             this.settings.setAsFavourite = this.setAsFavourite ? this.setAsFavourite.getValue() : false;
+            this.settings.saveFilters = this.saveFilters ? this.saveFilters.getValue() : false;
         } else {
             delete this.settings.sharedUserIds;
             delete this.settings.sharedRoleIds;
@@ -205,7 +208,7 @@ pimcore.object.helpers.gridConfigDialog = Class.create(pimcore.element.helpers.g
     getSelectionPanel: function () {
         if (!this.selectionPanel) {
 
-            var childs = [];
+            var children = [];
             for (var i = 0; i < this.config.selectedGridColumns.length; i++) {
                 var nodeConf = this.config.selectedGridColumns[i];
 
@@ -217,10 +220,11 @@ pimcore.object.helpers.gridConfigDialog = Class.create(pimcore.element.helpers.g
                     child = child[0];
 
                 } else {
-                    var text = t(nodeConf.label);
+                    let text = t(nodeConf.label);
 
-                    if (nodeConf.dataType !== "system" && this.showFieldname && nodeConf.key) {
-                        text = text + " (" + nodeConf.key.replace("~", ".") + ")";
+                    const keyText = ` (${nodeConf.key.replace("~", ".")})`;
+                    if (nodeConf.dataType !== "system" && this.showFieldname && nodeConf.key && !text.includes(keyText)) {
+                        text = text + keyText;
                     }
 
                     var child = {
@@ -241,7 +245,7 @@ pimcore.object.helpers.gridConfigDialog = Class.create(pimcore.element.helpers.g
                     child.locked = nodeConf.locked;
                 }
 
-                childs.push(child);
+                children.push(child);
             }
 
             this.cellEditing = Ext.create('Ext.grid.plugin.CellEditing', {
@@ -264,7 +268,7 @@ pimcore.object.helpers.gridConfigDialog = Class.create(pimcore.element.helpers.g
                     leaf: false,
                     isTarget: true,
                     expanded: true,
-                    children: childs
+                    children: children
                 }
             });
 

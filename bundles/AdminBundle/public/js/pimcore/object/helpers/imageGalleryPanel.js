@@ -10,6 +10,10 @@
  * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
  * @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
+
+/**
+ * @private
+ */
 Ext.define('pimcore.object.helpers.ImageGalleryPanel', {
     extend: 'Ext.panel.Panel',
 
@@ -33,7 +37,9 @@ Ext.define('pimcore.object.helpers.ImageGalleryPanel', {
     // private
     initEvents : function(){
         this.callParent();
-        this.dd = Ext.create('pimcore.object.helpers.ImageGalleryDropZone', this, {}, this.proxyConfig);
+        if (!this.proxyConfig.noteditable) {
+            this.dd = Ext.create('pimcore.object.helpers.ImageGalleryDropZone', this, {}, this.proxyConfig);
+        }
     },
 
     // private

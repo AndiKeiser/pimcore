@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -24,8 +25,12 @@ class DocumentImporter extends AbstractElementImporter
     /**
      * {@inheritdoc}
      */
-    protected function importAttribute(Element\ElementInterface $element, string $targetLanguage, Attribute $attribute)
+    protected function importAttribute(Element\ElementInterface $element, string $targetLanguage, Attribute $attribute): void
     {
+        if ($targetLanguage != $element->getProperty('language')) {
+            return;
+        }
+
         parent::importAttribute($element, $targetLanguage, $attribute);
 
         if ($attribute->getType() === Attribute::TYPE_TAG && $element instanceof Document\PageSnippet) {

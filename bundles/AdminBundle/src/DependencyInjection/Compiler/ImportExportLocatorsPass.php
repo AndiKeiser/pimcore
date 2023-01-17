@@ -30,12 +30,12 @@ use Symfony\Component\DependencyInjection\ServiceLocator;
  */
 final class ImportExportLocatorsPass implements CompilerPassInterface
 {
-    public function process(ContainerBuilder $container)
+    public function process(ContainerBuilder $container): void
     {
         $this->processGridColumns($container);
     }
 
-    private function processGridColumns(ContainerBuilder $container)
+    private function processGridColumns(ContainerBuilder $container): void
     {
         $gridColumnService = $container->getDefinition(GridColumnService::class);
 
@@ -62,7 +62,7 @@ final class ImportExportLocatorsPass implements CompilerPassInterface
         string $type,
         string $tag,
         string $argument
-    ) {
+    ): void {
         $resolvers = $container->findTaggedServiceIds($tag);
         $mapping = [];
 

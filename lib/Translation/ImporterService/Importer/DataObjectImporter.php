@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -23,13 +24,9 @@ use Pimcore\Translation\ExportDataExtractorService\DataExtractor\DataObjectDataE
 class DataObjectImporter extends AbstractElementImporter
 {
     /**
-     * @param Element\ElementInterface $element
-     * @param string $targetLanguage
-     * @param Attribute $attribute
-     *
-     * @throws \Exception
+     * {@inheritdoc}
      */
-    protected function importAttribute(Element\ElementInterface $element, string $targetLanguage, Attribute $attribute)
+    protected function importAttribute(Element\ElementInterface $element, string $targetLanguage, Attribute $attribute): void
     {
         parent::importAttribute($element, $targetLanguage, $attribute);
 
@@ -69,14 +66,14 @@ class DataObjectImporter extends AbstractElementImporter
 
             /** @var array $blockData */
             $blockData = $element->{'get' . $blockName}($targetLanguage);
-            $blockItem = !empty($blockData) && $blockData[$blockIndex] ? $blockData[$blockIndex] : clone $originalBlockItem;
-
+            $blockItem =  isset($blockData[$blockIndex]) ? $blockData[$blockIndex] : $originalBlockItem;
             /** @var DataObject\Data\BlockElement $blockItemData */
-            $blockItemData = !empty($blockData) ? $blockItem[$fieldname] : clone $originalBlockItemData;
+            $blockItemData = !empty($blockData) ? clone $blockItem[$fieldname] : clone $originalBlockItemData;
 
             $blockItemData->setLanguage($targetLanguage);
 
             $blockItemData->setData($attribute->getContent());
+
             $blockItem[$fieldname] = $blockItemData;
             $blockData[$blockIndex] = $blockItem;
 
@@ -113,20 +110,20 @@ class DataObjectImporter extends AbstractElementImporter
     }
 
     /**
-     * @param DataObject\Concrete $element
-     *
-     * @throws \Exception
+     * {@inheritdoc}
      */
-    protected function saveElement(Element\ElementInterface $element)
+    protected function saveElement(Element\ElementInterface $element): void
     {
-        $isDirtyDetectionDisabled = DataObject::isDirtyDetectionDisabled();
+        if ($element instanceof DataObject\Concrete) {
+            $isDirtyDetectionDisabled = DataObject::isDirtyDetectionDisabled();
 
-        try {
-            DataObject::disableDirtyDetection();
-            $element->setOmitMandatoryCheck(true);
-            parent::saveElement($element);
-        } finally {
-            DataObject::setDisableDirtyDetection($isDirtyDetectionDisabled);
+            try {
+                DataObject::disableDirtyDetection();
+                $element->setOmitMandatoryCheck(true);
+                parent::saveElement($element);
+            } finally {
+                DataObject::setDisableDirtyDetection($isDirtyDetectionDisabled);
+            }
         }
     }
 }

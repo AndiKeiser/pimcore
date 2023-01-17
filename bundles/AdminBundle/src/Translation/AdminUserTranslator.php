@@ -26,15 +26,9 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 class AdminUserTranslator implements TranslatorInterface, LocaleAwareInterface
 {
-    /**
-     * @var TranslatorInterface
-     */
-    private $translator;
+    private TranslatorInterface $translator;
 
-    /**
-     * @var UserLoader
-     */
-    private $userLoader;
+    private UserLoader $userLoader;
 
     public function __construct(TranslatorInterface $translator, UserLoader $userLoader)
     {
@@ -42,10 +36,7 @@ class AdminUserTranslator implements TranslatorInterface, LocaleAwareInterface
         $this->userLoader = $userLoader;
     }
 
-    /**
-     * @return string|null
-     */
-    private function getUserLocale()
+    private function getUserLocale(): ?string
     {
         if (null !== $user = $this->userLoader->getUser()) {
             return $user->getLanguage();
@@ -68,7 +59,7 @@ class AdminUserTranslator implements TranslatorInterface, LocaleAwareInterface
     /**
      * {@inheritdoc}
      */
-    public function setLocale($locale)
+    public function setLocale(string $locale): void
     {
         if ($this->translator instanceof LocaleAwareInterface) {
             $this->translator->setLocale($locale);

@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.element.metainfo");
+/**
+ * @private
+ */
 pimcore.element.metainfo = Class.create({
     getClassName: function (){
         return "pimcore.element.metainfo";
@@ -79,9 +82,11 @@ pimcore.element.metainfo = Class.create({
                 if (type == "user") {
 
                     var htmlValue = value;
-
                     var user = pimcore.globalmanager.get("user");
-                    if (user.admin) {
+                    var userUnknown = (htmlValue.search(t('user_unknown')) == -1) ? false : true;
+                    var userSystem = (htmlValue.search('data-uid="0"') == -1) ? false : true;
+
+                    if (user.admin && !userUnknown && !userSystem) {
                         htmlValue = value + " " + '<a href="#">' + t("click_to_open") +  '</a>';
                     }
 
@@ -92,11 +97,12 @@ pimcore.element.metainfo = Class.create({
                         value: htmlValue,
                         width: 730
                     };
-                    if (user.admin) {
+                    if (user.admin && !userUnknown && !userSystem) {
                         item.listeners = {
                             render: function(value, detailWindow, c){
                                 c.getEl().on('click', function(){
-                                    pimcore.helpers.showUser(value);
+                                    var inputId = c.getInputId();
+                                    pimcore.helpers.showUser(Ext.get(inputId).child('span').getAttribute('data-uid'));
                                     detailWindow.close();
                                 }, c);
                             }.bind(this, value, this.detailWindow)

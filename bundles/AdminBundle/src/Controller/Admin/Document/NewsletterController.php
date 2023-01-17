@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -78,6 +79,7 @@ class NewsletterController extends DocumentControllerBase
 
         $this->addTranslationsData($email, $data);
         $this->minimizeProperties($email, $data);
+        $this->populateUsersNames($email, $data);
 
         $data['url'] = $email->getUrl();
 
@@ -115,30 +117,29 @@ class NewsletterController extends DocumentControllerBase
                 'treeData' => $treeData,
             ]);
         } else {
-            $draftData = [
-                'id' => $version->getId(),
-                'modificationDate' => $version->getDate(),
-                'isAutoSave' => $version->isAutoSave(),
-            ];
+            $draftData = [];
+            if ($version) {
+                $draftData = [
+                    'id' => $version->getId(),
+                    'modificationDate' => $version->getDate(),
+                    'isAutoSave' => $version->isAutoSave(),
+                ];
+            }
 
             return $this->adminJson(['success' => true, 'draft' => $draftData]);
         }
     }
 
-    /**
-     * @param Request $request
-     * @param Document $page
-     */
-    protected function setValuesToDocument(Request $request, Document $page)
+    protected function setValuesToDocument(Request $request, Document $document): void
     {
-        $this->addSettingsToDocument($request, $page);
-        $this->addDataToDocument($request, $page);
-        $this->addPropertiesToDocument($request, $page);
+        $this->addSettingsToDocument($request, $document);
+        $this->addDataToDocument($request, $document);
+        $this->addPropertiesToDocument($request, $document);
 
         // plaintext
         if ($request->get('plaintext')) {
             $plaintext = $this->decodeJson($request->get('plaintext'));
-            $page->setValues($plaintext);
+            $document->setValues($plaintext);
         }
     }
 

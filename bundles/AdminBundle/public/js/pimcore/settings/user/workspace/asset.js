@@ -13,6 +13,9 @@
 
 
 pimcore.registerNS("pimcore.settings.user.workspace.asset");
+/**
+ * @private
+ */
 pimcore.settings.user.workspace.asset = Class.create({
 
     initialize: function (parent) {
@@ -34,6 +37,7 @@ pimcore.settings.user.workspace.asset = Class.create({
         var typesColumns = [
             {text: t("path"), width: 200, sortable: false, dataIndex: 'path',
                         editor: new Ext.form.TextField({}),
+                        renderer: Ext.util.Format.htmlEncode,
                         tdCls: "pimcore_property_droptarget"
             }
         ];

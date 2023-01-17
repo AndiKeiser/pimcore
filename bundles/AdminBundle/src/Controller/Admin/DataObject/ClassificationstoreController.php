@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -21,6 +22,10 @@ use Pimcore\Db;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data\LayoutDefinitionEnrichmentInterface;
 use Pimcore\Model\DataObject\Classificationstore;
+use Pimcore\Model\Translation;
+use Pimcore\Model\Translation\Listing;
+use Pimcore\Model\User;
+use Pimcore\Tool\Admin;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
@@ -34,17 +39,11 @@ use Symfony\Component\Routing\Annotation\Route;
 class ClassificationstoreController extends AdminController implements KernelControllerEventInterface
 {
     /**
-     * Delete collection with the group-relations
-     *
      * @Route("/delete-collection", name="deletecollection", methods={"DELETE"})
-     *
-     * @param Request $request
-     *
-     * @return JsonResponse
      */
     public function deleteCollectionAction(Request $request): JsonResponse
     {
-        $id = $request->get('id');
+        $id = $request->request->getInt('id');
 
         $configRelations = new Classificationstore\CollectionGroupRelation\Listing();
         $configRelations->setCondition('colId = ?', $id);
@@ -68,8 +67,8 @@ class ClassificationstoreController extends AdminController implements KernelCon
      */
     public function deleteCollectionRelationAction(Request $request): JsonResponse
     {
-        $colId = $request->get('colId');
-        $groupId = $request->get('groupId');
+        $colId = $request->request->getInt('colId');
+        $groupId = $request->request->getInt('groupId');
 
         $config = new Classificationstore\CollectionGroupRelation();
         $config->setColId($colId);
@@ -110,7 +109,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
      */
     public function deleteGroupAction(Request $request): JsonResponse
     {
-        $id = $request->get('id');
+        $id = $request->request->getInt('id');
 
         $config = Classificationstore\GroupConfig::getById($id);
         $config->delete();
@@ -130,7 +129,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
     public function createGroupAction(Request $request): JsonResponse
     {
         $name = $request->get('name');
-        $storeId = $request->get('storeId');
+        $storeId = (int) $request->get('storeId');
         $config = Classificationstore\GroupConfig::getByName($name, $storeId);
 
         if (!$config) {
@@ -183,7 +182,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
     public function createCollectionAction(Request $request): JsonResponse
     {
         $name = $request->get('name');
-        $storeId = $request->get('storeId');
+        $storeId = (int) $request->get('storeId');
         $config = Classificationstore\CollectionConfig::getByName($name, $storeId);
 
         if (!$config) {
@@ -208,7 +207,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
         $this->checkPermission('objects');
 
         $start = 0;
-        $limit = $request->get('limit') ? $request->get('limit') : 15;
+        $limit = $request->get('limit') ? (int) $request->get('limit') : 15;
 
         $orderKey = 'name';
         $order = 'ASC';
@@ -217,11 +216,8 @@ class ClassificationstoreController extends AdminController implements KernelCon
             $order = $request->get('dir');
         }
 
-        if ($request->get('limit')) {
-            $limit = $request->get('limit');
-        }
         if ($request->get('start')) {
-            $start = $request->get('start');
+            $start = (int) $request->get('start');
         }
 
         $allParams = array_merge($request->request->all(), $request->query->all());
@@ -231,7 +227,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
             $order = $sortingSettings['order'];
         }
 
-        if ($request->get('overrideSort') == 'true') {
+        if ($request->query->getBoolean('overrideSort')) {
             $orderKey = 'id';
             $order = 'DESC';
         }
@@ -272,11 +268,18 @@ class ClassificationstoreController extends AdminController implements KernelCon
 
         $searchfilter = $request->get('searchfilter');
         if ($searchfilter) {
-            $conditionParts[] = '(name LIKE ' . $db->quote('%' . $searchfilter . '%') . ' OR description LIKE ' . $db->quote('%'. $searchfilter . '%') . ')';
+            $searchFilterConditions = [];
+
+            $searchTerms = array_merge([$searchfilter], $this->getTranslatedSearchFilterTerms($searchfilter));
+            foreach ($searchTerms as $searchFilterTerm) {
+                $searchFilterConditions[] = 'name LIKE '.$db->quote('%'.$searchFilterTerm.'%').' OR description LIKE '.$db->quote('%'.$searchFilterTerm.'%');
+            }
+
+            $conditionParts[] = '('.implode(' OR ', $searchFilterConditions).')';
         }
 
         $storeId = $request->get('storeId');
-        $storeId = $storeId ? $storeId : $storeIdFromDefinition;
+        $storeId = $storeId ? (int) $storeId : (int) $storeIdFromDefinition;
 
         $conditionParts[] = ' (storeId = ' . $db->quote($storeId) . ')';
 
@@ -391,10 +394,10 @@ class ClassificationstoreController extends AdminController implements KernelCon
         }
 
         if ($request->get('limit')) {
-            $limit = $request->get('limit');
+            $limit = (int) $request->get('limit');
         }
         if ($request->get('start')) {
-            $start = $request->get('start');
+            $start = (int) $request->get('start');
         }
 
         $allParams = array_merge($request->request->all(), $request->query->all());
@@ -404,7 +407,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
             $order = $sortingSettings['order'];
         }
 
-        if ($request->get('overrideSort') == 'true') {
+        if ($request->query->getBoolean('overrideSort')) {
             $orderKey = 'id';
             $order = 'DESC';
         }
@@ -421,11 +424,18 @@ class ClassificationstoreController extends AdminController implements KernelCon
 
         $searchfilter = $request->get('searchfilter');
         if ($searchfilter) {
-            $conditionParts[] = '(name LIKE ' . $db->quote('%' . $searchfilter . '%') . ' OR description LIKE ' . $db->quote('%'. $searchfilter . '%') . ')';
+            $searchFilterConditions = [];
+
+            $searchTerms = array_merge([$searchfilter], $this->getTranslatedSearchFilterTerms($searchfilter));
+            foreach ($searchTerms as $searchFilterTerm) {
+                $searchFilterConditions[] = 'name LIKE '.$db->quote('%'.$searchFilterTerm.'%').' OR description LIKE '.$db->quote('%'.$searchFilterTerm.'%');
+            }
+
+            $conditionParts[] = '('.implode(' OR ', $searchFilterConditions).')';
         }
 
-        if ($request->get('storeId')) {
-            $conditionParts[] = '(storeId = ' . $db->quote($request->get('storeId')) . ')';
+        if ($storeId = $request->query->getInt('storeId')) {
+            $conditionParts[] = '(storeId = ' . $db->quote($storeId) . ')';
         }
 
         if ($request->get('filter')) {
@@ -548,16 +558,16 @@ class ClassificationstoreController extends AdminController implements KernelCon
             $order = $sortingSettings['order'];
         }
 
-        if ($request->get('overrideSort') == 'true') {
+        if ($request->query->getBoolean('overrideSort')) {
             $orderKey = 'id';
             $order = 'DESC';
         }
 
         if ($request->get('limit')) {
-            $limit = $request->get('limit');
+            $limit = (int) $request->get('limit');
         }
         if ($request->get('start')) {
-            $start = $request->get('start');
+            $start = (int) $request->get('start');
         }
 
         $list = new Classificationstore\CollectionGroupRelation\Listing();
@@ -591,7 +601,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
             }
         }
 
-        $colId = $request->get('colId');
+        $colId = $request->query->getInt('colId');
         if ($condition) {
             $condition = '( ' . $condition . ' ) AND';
         }
@@ -716,16 +726,16 @@ class ClassificationstoreController extends AdminController implements KernelCon
             $order = $sortingSettings['order'];
         }
 
-        if ($request->get('overrideSort') == 'true') {
+        if ($request->query->getBoolean('overrideSort')) {
             $orderKey = 'id';
             $order = 'DESC';
         }
 
         if ($request->get('limit')) {
-            $limit = $request->get('limit');
+            $limit = (int) $request->get('limit');
         }
         if ($request->get('start')) {
-            $start = $request->get('start');
+            $start = (int) $request->get('start');
         }
 
         $list = new Classificationstore\KeyGroupRelation\Listing();
@@ -758,11 +768,18 @@ class ClassificationstoreController extends AdminController implements KernelCon
 
         $searchfilter = $request->get('searchfilter');
         if ($searchfilter) {
-            $conditionParts[] = '('
-                . Classificationstore\KeyConfig\Dao::TABLE_NAME_KEYS . '.name LIKE ' . $db->quote('%' . $searchfilter . '%')
-                . ' OR ' . Classificationstore\GroupConfig\Dao::TABLE_NAME_GROUPS . '.name LIKE ' . $db->quote('%' . $searchfilter . '%')
-                . ' OR ' . Classificationstore\KeyConfig\Dao::TABLE_NAME_KEYS . '.description LIKE ' . $db->quote('%' . $searchfilter . '%') . ')';
+            $searchFilterConditions = [];
+
+            $searchTerms = array_merge([$searchfilter], $this->getTranslatedSearchFilterTerms($searchfilter));
+            foreach ($searchTerms as $searchFilterTerm) {
+                $searchFilterConditions[] = Classificationstore\KeyConfig\Dao::TABLE_NAME_KEYS.'.name LIKE '.$db->quote('%'.$searchFilterTerm.'%')
+                    .' OR '.Classificationstore\GroupConfig\Dao::TABLE_NAME_GROUPS.'.name LIKE '.$db->quote('%'.$searchFilterTerm.'%')
+                    .' OR '.Classificationstore\KeyConfig\Dao::TABLE_NAME_KEYS.'.description LIKE '.$db->quote('%'.$searchFilterTerm.'%');
+            }
+
+            $conditionParts[] = '('.implode(' OR ', $searchFilterConditions).')';
         }
+
         $condition = implode(' AND ', $conditionParts);
         $list->setCondition($condition);
         $list->setResolveGroupName(true);
@@ -827,19 +844,19 @@ class ClassificationstoreController extends AdminController implements KernelCon
             $order = $sortingSettings['order'];
         }
 
-        if ($request->get('overrideSort') == 'true') {
+        if ($request->query->getBoolean('overrideSort')) {
             $orderKey = 'id';
             $order = 'DESC';
         }
 
         if ($request->get('limit')) {
-            $limit = $request->get('limit');
+            $limit = (int) $request->get('limit');
         } elseif (is_array($relationIds)) {
             $limit = count($relationIds);
         }
 
         if ($request->get('start')) {
-            $start = $request->get('start');
+            $start = (int) $request->get('start');
         }
 
         $list = new Classificationstore\KeyGroupRelation\Listing();
@@ -896,7 +913,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
         $data = [];
         foreach ($listItems as $config) {
             $type = $config->getType();
-            $definition = json_decode($config->getDefinition());
+            $definition = json_decode($config->getDefinition(), true);
             $definition = \Pimcore\Model\DataObject\Classificationstore\Service::getFieldDefinitionFromJson($definition, $type);
             DataObject\Service::enrichLayoutDefinition($definition);
 
@@ -939,8 +956,8 @@ class ClassificationstoreController extends AdminController implements KernelCon
             $mandatory = $data['mandatory'];
 
             $config = new Classificationstore\KeyGroupRelation();
-            $config->setGroupId($groupId);
-            $config->setKeyId($keyId);
+            $config->setGroupId((int) $groupId);
+            $config->setKeyId((int) $keyId);
             $config->setSorter($sorter);
             $config->setMandatory($mandatory);
 
@@ -967,9 +984,6 @@ class ClassificationstoreController extends AdminController implements KernelCon
         $this->checkPermission('objects');
 
         $ids = $this->decodeJson($request->get('collectionIds'));
-        $oid = $request->get('oid');
-        $object = DataObject\Concrete::getById($oid);
-        $fieldname = $request->get('fieldname');
         $data = [];
 
         if ($ids) {
@@ -988,8 +1002,9 @@ class ClassificationstoreController extends AdminController implements KernelCon
 
             $allowedGroupIds = null;
 
-            if ($oid = $request->get('oid')) {
-                $object = DataObject\Concrete::getById((int) $oid);
+            $oid = $request->request->getInt('oid');
+            $object = DataObject\Concrete::getById($oid);
+            if ($object) {
                 $class = $object->getClass();
                 /** @var DataObject\ClassDefinition\Data\Classificationstore $fd */
                 $fd = $class->getFieldDefinition($request->get('fieldname'));
@@ -1004,6 +1019,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
             }
 
             if ($groupIdList) {
+                $fieldname = $request->get('fieldname');
                 $groupList = new Classificationstore\GroupConfig\Listing();
                 $groupCondition = 'id in (' . implode(',', $groupIdList) . ')';
                 $groupList->setCondition($groupCondition);
@@ -1034,7 +1050,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
 
                     $keyList = $data[$groupId]['keys'];
                     $type = $keyData->getType();
-                    $definition = json_decode($keyData->getDefinition());
+                    $definition = json_decode($keyData->getDefinition(), true);
                     $definition = \Pimcore\Model\DataObject\Classificationstore\Service::getFieldDefinitionFromJson($definition, $type);
 
                     if (method_exists($definition, '__wakeup')) {
@@ -1081,7 +1097,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
         $this->checkPermission('objects');
 
         $ids = $this->decodeJson($request->get('groupIds'));
-        $oid = $request->get('oid');
+        $oid = $request->request->getInt('oid');
         $object = DataObject\Concrete::getById($oid);
         $fieldname = $request->get('fieldname');
 
@@ -1117,7 +1133,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
 
             $keyList = $data[$groupId]['keys'];
             $type = $keyData->getType();
-            $definition = json_decode($keyData->getDefinition());
+            $definition = json_decode($keyData->getDefinition(), true);
             $definition = \Pimcore\Model\DataObject\Classificationstore\Service::getFieldDefinitionFromJson($definition, $type);
 
             if (method_exists($definition, '__wakeup')) {
@@ -1159,7 +1175,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
      */
     public function propertiesGetAction(Request $request): JsonResponse
     {
-        $storeId = $request->get('storeId');
+        $storeId = (int) $request->get('storeId');
         $frameName = $request->get('frameName');
         $db = \Pimcore\Db::get();
 
@@ -1213,16 +1229,16 @@ class ClassificationstoreController extends AdminController implements KernelCon
             $order = $sortingSettings['order'];
         }
 
-        if ($request->get('overrideSort') == 'true') {
+        if ($request->query->getBoolean('overrideSort')) {
             $orderKey = 'id';
             $order = 'DESC';
         }
 
         if ($request->get('limit')) {
-            $limit = $request->get('limit');
+            $limit = (int) $request->get('limit');
         }
         if ($request->get('start')) {
-            $start = $request->get('start');
+            $start = (int) $request->get('start');
         }
 
         $list = new Classificationstore\KeyConfig\Listing();
@@ -1334,12 +1350,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
         return $this->adminJson(['success' => false]);
     }
 
-    /**
-     * @param Classificationstore\KeyConfig $config
-     *
-     * @return array
-     */
-    protected function getConfigItem($config): array
+    protected function getConfigItem(Classificationstore\KeyConfig $config): array
     {
         $name = $config->getName();
 
@@ -1381,7 +1392,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
     public function addPropertyAction(Request $request): JsonResponse
     {
         $name = $request->get('name');
-        $storeId = $request->get('storeId');
+        $storeId = (int) $request->get('storeId');
 
         $definition = [
             'fieldtype' => 'input',
@@ -1410,7 +1421,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
      */
     public function deletePropertyAction(Request $request): JsonResponse
     {
-        $id = $request->get('id');
+        $id = $request->request->getInt('id');
 
         $config = Classificationstore\KeyConfig::getById($id);
         //        $config->delete();
@@ -1431,7 +1442,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
      */
     public function editStoreAction(Request $request): JsonResponse
     {
-        $id = $request->get('id');
+        $id = $request->request->getInt('id');
         $data = json_decode($request->get('data'), true);
 
         $name = $data['name'];
@@ -1478,7 +1489,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
                 'expandable' => false,
                 'leaf' => true,
                 'expanded' => true,
-                'description' => htmlspecialchars($item->getDescription(), ENT_QUOTES),
+                'description' => htmlspecialchars($item->getDescription() ?? '', ENT_QUOTES),
                 'iconCls' => 'pimcore_icon_classificationstore',
             ];
 
@@ -1557,10 +1568,7 @@ class ClassificationstoreController extends AdminController implements KernelCon
         return $this->adminJson(['success' => true, 'page' => $page]);
     }
 
-    /**
-     * @param ControllerEvent $event
-     */
-    public function onKernelControllerEvent(ControllerEvent $event)
+    public function onKernelControllerEvent(ControllerEvent $event): void
     {
         if (!$event->isMainRequest()) {
             return;
@@ -1575,5 +1583,26 @@ class ClassificationstoreController extends AdminController implements KernelCon
             'searchRelationsAction',
         ];
         $this->checkActionPermission($event, 'classes', $unrestrictedActions);
+    }
+
+    /**
+     * @return string[]
+     */
+    private function getTranslatedSearchFilterTerms(string $searchTerm): array
+    {
+        $terms = [];
+
+        $user = Admin::getCurrentUser();
+        if ($user instanceof User) {
+            $translationListing = new Listing();
+            $translationListing->setDomain(Translation::DOMAIN_ADMIN);
+            $translationListing->setCondition('language=? AND text LIKE ?', [$user->getLanguage(), '%'.$searchTerm.'%']);
+
+            foreach ($translationListing as $translation) {
+                $terms[] = $translation->getKey();
+            }
+        }
+
+        return $terms;
     }
 }

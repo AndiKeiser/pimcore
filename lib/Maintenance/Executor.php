@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -25,20 +26,11 @@ use Symfony\Component\Messenger\MessageBusInterface;
  */
 final class Executor implements ExecutorInterface
 {
-    /**
-     * @var array
-     */
-    private $tasks = [];
+    private array $tasks = [];
 
-    /**
-     * @var string
-     */
-    private $pidFileName;
+    private string $pidFileName;
 
-    /**
-     * @var LoggerInterface
-     */
-    private $logger;
+    private LoggerInterface $logger;
 
     public function __construct(
         string $pidFileName,
@@ -49,7 +41,7 @@ final class Executor implements ExecutorInterface
         $this->logger = $logger;
     }
 
-    public function executeTask(string $name)
+    public function executeTask(string $name): void
     {
         if (!in_array($name, $this->getTaskNames(), true)) {
             throw new \Exception(sprintf('Task with name "%s" not found', $name));
@@ -77,7 +69,7 @@ final class Executor implements ExecutorInterface
     /**
      * {@inheritdoc}
      */
-    public function executeMaintenance(array $validJobs = [], array $excludedJobs = [])
+    public function executeMaintenance(array $validJobs = [], array $excludedJobs = []): void
     {
         $this->setLastExecution();
 
@@ -104,10 +96,7 @@ final class Executor implements ExecutorInterface
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getTaskNames()
+    public function getTaskNames(): array
     {
         return array_keys($this->tasks);
     }
@@ -120,18 +109,12 @@ final class Executor implements ExecutorInterface
         return $this->tasks;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function setLastExecution()
+    public function setLastExecution(): void
     {
         TmpStore::set($this->pidFileName, time());
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getLastExecution()
+    public function getLastExecution(): int
     {
         $item = TmpStore::get($this->pidFileName);
 
@@ -142,10 +125,7 @@ final class Executor implements ExecutorInterface
         return 0;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function registerTask($name, TaskInterface $task)
+    public function registerTask(string $name, TaskInterface $task): void
     {
         if (array_key_exists($name, $this->tasks)) {
             throw new \InvalidArgumentException(sprintf('Task with name %s has already been registered', $name));

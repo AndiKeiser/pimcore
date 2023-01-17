@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.asset.video");
+/**
+ * @private
+ */
 pimcore.asset.video = Class.create(pimcore.asset.asset, {
 
     initialize: function (id, options) {
@@ -25,10 +28,15 @@ pimcore.asset.video = Class.create(pimcore.asset.asset, {
             detail: {
                 object: this,
                 type: "video"
-            }
+            },
+            cancelable: true
         });
 
-        document.dispatchEvent(preOpenAssetVideo);
+        const isAllowed = document.dispatchEvent(preOpenAssetVideo);
+        if (!isAllowed) {
+            this.removeLoadingPanel();
+            return;
+        }
 
 
         var user = pimcore.globalmanager.get("user");
@@ -338,10 +346,10 @@ pimcore.asset.video = Class.create(pimcore.asset.asset, {
         var previewContainerId = 'pimcore_video_preview_vr_' + this.id;
         this.previewPanel.update('<div id="' + previewContainerId + '" class="pimcore_asset_image_preview"></div>');
         var vrView = new VRView.Player('#' + previewContainerId, {
-            video: this.data['videoInfo']['previewUrl'],
+            video: Routing.generate('pimcore_admin_asset_servevideopreview', {id: this.data.id}),
             is_stereo: (this.data['videoInfo']['width'] === this.data['videoInfo']['height']),
-            width: 500,
-            height: 350,
+            width: 640,
+            height: 360,
             hide_fullscreen_button: true
         });
 

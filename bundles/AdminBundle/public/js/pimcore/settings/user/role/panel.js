@@ -13,6 +13,9 @@
 
 
 pimcore.registerNS("pimcore.settings.user.role.panel");
+/**
+ * @private
+ */
 pimcore.settings.user.role.panel = Class.create(pimcore.settings.user.panels.abstract, {
 
     getTabPanel: function () {
@@ -48,7 +51,7 @@ pimcore.settings.user.role.panel = Class.create(pimcore.settings.user.panels.abs
             var store = Ext.create('Ext.data.TreeStore', {
                 proxy: {
                     type: 'ajax',
-                    url: Routing.generate('pimcore_admin_user_roletreegetchildsbyid')
+                    url: Routing.generate('pimcore_admin_user_roletreegetchildrenbyid')
                 }
             });
 

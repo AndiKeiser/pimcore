@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.object.classes.data.manyToOneRelation");
+/**
+ * @private
+ */
 pimcore.object.classes.data.manyToOneRelation = Class.create(pimcore.object.classes.data.data, {
 
     type: "manyToOneRelation",
@@ -170,6 +173,11 @@ pimcore.object.classes.data.manyToOneRelation = Class.create(pimcore.object.clas
                         fieldLabel: t("path_formatter_service"),
                         name: 'pathFormatterClass',
                         value: this.datax.pathFormatterClass
+                    }, {
+                        xtype: "checkbox",
+                        boxLabel: t("allow_to_clear_relation"),
+                        name: "allowToClearRelation",
+                        value: this.datax.allowToClearRelation ?? true
                     }
                 ]
             },
@@ -227,15 +235,26 @@ pimcore.object.classes.data.manyToOneRelation = Class.create(pimcore.object.clas
                         listeners:{
                             change:function(cbox, checked) {
                                 if (checked) {
+                                    Ext.getCmp('class_allow_inline_download_' + this.uniqeFieldId).show();
                                     Ext.getCmp('class_allowed_asset_types_' + this.uniqeFieldId).show();
                                     Ext.getCmp('class_asset_upload_path_' + this.uniqeFieldId).show();
                                 } else {
+                                    Ext.getCmp('class_allow_inline_download_' + this.uniqeFieldId).hide();
                                     Ext.getCmp('class_allowed_asset_types_' + this.uniqeFieldId).hide();
                                     Ext.getCmp('class_asset_upload_path_' + this.uniqeFieldId).hide();
 
                                 }
                             }.bind(this)
                         }
+                    },
+                    {
+                        fieldLabel: t("allow_asset_inline_download"),
+                        name: "assetInlineDownloadAllowed",
+                        id: 'class_allow_inline_download_' + this.uniqeFieldId,
+                        hidden: !this.datax.assetsAllowed,
+                        allowEdit: this.datax.assetsAllowed,
+                        value: this.datax.assetInlineDownloadAllowed,
+                        xtype: 'checkbox'
                     },
                     new Ext.ux.form.MultiSelect({
                         fieldLabel: t("allowed_asset_types") + '<br />' + t('allowed_types_hint'),
@@ -327,6 +346,19 @@ pimcore.object.classes.data.manyToOneRelation = Class.create(pimcore.object.clas
                         width: 400
                     })
                 ]
+            },
+            {
+                xtype: "combo",
+                fieldLabel: t("display_mode"),
+                name: "displayMode",
+                value: this.datax.displayMode ?? 'grid',
+                labelWidth: 140,
+                forceSelection: true,
+                width: 400,
+                store: [
+                    ['grid', t('display_mode_display')],
+                    ['combo', t('display_mode_inline_search')],
+                ]
             }
 
 
@@ -344,6 +376,7 @@ pimcore.object.classes.data.manyToOneRelation = Class.create(pimcore.object.clas
             Ext.apply(this.datax,
                 {
                     width: source.datax.width,
+                    assetInlineDownloadAllowed: source.datax.assetInlineDownloadAllowed,
                     assetUploadPath: source.datax.assetUploadPath,
                     relationType: source.datax.relationType,
                     remoteOwner: source.datax.remoteOwner,
@@ -353,7 +386,8 @@ pimcore.object.classes.data.manyToOneRelation = Class.create(pimcore.object.clas
                     assetTypes: source.datax.assetTypes,
                     documentsAllowed: source.datax.documentsAllowed,
                     documentTypes: source.datax.documentTypes,
-                    pathFormatterClass: source.datax.pathFormatterClass
+                    pathFormatterClass: source.datax.pathFormatterClass,
+                    allowToClearRelation: source.datax.allowToClearRelation
                 });
         }
     }

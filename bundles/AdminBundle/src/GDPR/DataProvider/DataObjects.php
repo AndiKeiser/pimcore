@@ -31,15 +31,9 @@ use Pimcore\Model\Search\Backend\Data;
  */
 class DataObjects extends Elements implements DataProviderInterface
 {
-    /**
-     * @var array
-     */
-    protected $exportIds = [];
+    protected array $exportIds = [];
 
-    /**
-     * @var array
-     */
-    protected $config = [];
+    protected array $config = [];
 
     public function __construct(array $config)
     {
@@ -93,7 +87,7 @@ class DataObjects extends Elements implements DataProviderInterface
         return $exportResult;
     }
 
-    protected function fillIds(ElementInterface $element)
+    protected function fillIds(ElementInterface $element): void
     {
         $this->exportIds[$element->getType()][$element->getId()] = true;
 
@@ -165,7 +159,7 @@ class DataObjects extends Elements implements DataProviderInterface
             $conditionParts[] = '( MATCH (`data`,`properties`) AGAINST ("' . $db->quote($queryString) . '" IN BOOLEAN MODE) )';
         }
 
-        $conditionParts[] = '( maintype = "object" AND type IN ("object", "variant") )';
+        $conditionParts[] = '( maintype = "object" AND `type` IN ("object", "variant") )';
 
         $classnames = [];
         if ($this->config['classes']) {

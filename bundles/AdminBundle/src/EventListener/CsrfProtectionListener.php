@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -30,19 +31,13 @@ class CsrfProtectionListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
-    /**
-     * @var Environment
-     */
-    protected $twig;
+    protected Environment $twig;
 
     /**
      * @var CsrfProtectionHandler $handler
      */
-    protected $csrfProtectionHandler;
+    protected CsrfProtectionHandler $csrfProtectionHandler;
 
-    /**
-     * @param CsrfProtectionHandler $csrfProtectionHandler
-     */
     public function __construct(CsrfProtectionHandler $csrfProtectionHandler)
     {
         $this->csrfProtectionHandler = $csrfProtectionHandler;
@@ -58,10 +53,7 @@ class CsrfProtectionListener implements EventSubscriberInterface
         ];
     }
 
-    /**
-     * @param RequestEvent $event
-     */
-    public function handleRequest(RequestEvent $event)
+    public function handleRequest(RequestEvent $event): void
     {
         $request = $event->getRequest();
         if (!$this->matchesPimcoreContext($request, PimcoreContextResolver::CONTEXT_ADMIN)) {
@@ -79,9 +71,7 @@ class CsrfProtectionListener implements EventSubscriberInterface
             'pimcore_admin_webdav',
 
             // external applications
-            'pimcore_admin_external_opcache_index',
-            'pimcore_admin_external_adminer_adminer', 'pimcore_admin_external_adminer_proxy',
-            'pimcore_admin_external_adminer_proxy_1', 'pimcore_admin_external_adminer_proxy_2',
+            'pimcore_bundle_systeminfo_opcache_index',
         ];
 
         $route = $request->attributes->get('_route');

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -30,20 +31,10 @@ class HttpCacheListener implements EventSubscriberInterface
 {
     use PimcoreContextAwareTrait;
 
-    /**
-     * @var RequestHelper
-     */
-    protected $requestHelper;
+    protected RequestHelper $requestHelper;
 
-    /**
-     * @var ResponseHelper
-     */
-    protected $responseHelper;
+    protected ResponseHelper $responseHelper;
 
-    /**
-     * @param RequestHelper $requestHelper
-     * @param ResponseHelper $responseHelper
-     */
     public function __construct(RequestHelper $requestHelper, ResponseHelper $responseHelper)
     {
         $this->requestHelper = $requestHelper;
@@ -60,7 +51,7 @@ class HttpCacheListener implements EventSubscriberInterface
         ];
     }
 
-    public function onKernelResponse(ResponseEvent $event)
+    public function onKernelResponse(ResponseEvent $event): void
     {
         $request = $event->getRequest();
 

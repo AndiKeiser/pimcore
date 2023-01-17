@@ -12,6 +12,9 @@
  */
 
 pimcore.registerNS("pimcore.object.tags.calculatedValue");
+/**
+ * @private
+ */
 pimcore.object.tags.calculatedValue = Class.create(pimcore.object.tags.abstract, {
 
     type: "calculatedValue",
@@ -21,7 +24,6 @@ pimcore.object.tags.calculatedValue = Class.create(pimcore.object.tags.abstract,
         this.fieldConfig = fieldConfig;
 
     },
-
 
     getLayoutEdit: function () {
 
@@ -99,7 +101,7 @@ pimcore.object.tags.calculatedValue = Class.create(pimcore.object.tags.abstract,
                 console.log(e);
             }
 
-            if (value) {
+            if (value && (this.fieldConfig === undefined || this.fieldConfig.elementType !== 'html')) {
                 value = value.replace(/\n/g,"<br>");
                 value = strip_tags(value, '<br>');
             }
